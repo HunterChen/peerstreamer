@@ -12,10 +12,19 @@
 */
 
 var ChunkStore = module.exports.ChunkStore = function () {
+	this.chunks = {};
 };
 
 ChunkStore.prototype.add = function (filename, chunk, data) {
+	var fc = filename + chunk;
+	this.chunks[fc] = data;
 };
 
 ChunkStore.prototype.delete = function (filename, chunk, data) {
+	var fc = filename + chunk;
+	if this.chunks[fc] == data {
+		delete this.chunks[fc];
+	} else {
+		//something went wrong, data delete requested is outdated? what do?
+	}
 };

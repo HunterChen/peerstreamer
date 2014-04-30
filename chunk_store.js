@@ -22,7 +22,7 @@ ChunkStore.prototype.add = function (filename, chunk, data) {
 
 ChunkStore.prototype.delete = function (filename, chunk, data) {
 	var fc = filename + chunk;
-	if this.chunks[fc] == data {
+	if (this.chunks[fc] === data) {
 		delete this.chunks[fc];
 	} else {
 		//something went wrong, data delete requested is outdated? what do?

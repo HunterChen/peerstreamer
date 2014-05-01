@@ -11,8 +11,8 @@ var events = require('events')
   , util = require('util')
   ;
 
-var DEFAULT_HEARTBEAT_TIMEOUT = 10 // seconds
-  , DEFAULT_PING_INTERVAL = 10 // seconds
+var DEFAULT_HEARTBEAT_TIMEOUT = 2 // seconds
+  , DEFAULT_PING_INTERVAL = 3 // seconds
   ;
 
 // So we'll notice within HEARTBEAT_TIMEOUT + PING_INTERVAL seconds.
@@ -29,8 +29,13 @@ util.inherits(ChildTracker, events.EventEmitter);
 ChildTracker.prototype.add = function (server) {
   // Adds a server to track. Should ping this server
   // until it is dead, at which point emit a 'childgone' event.
-  this.tracking[server.name] = server;
-  this._ping(server);
+  if (!this.tracking.hasOwnProperty(server.name)) {
+    this.tracking[server.name] = server;
+    this._ping(server);
+    return true;
+  } else {
+    return false;
+  }
 };
 
 ChildTracker.prototype._ping = function (server) {

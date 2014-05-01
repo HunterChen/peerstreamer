@@ -2,12 +2,17 @@
 
 var zerorpc = require('zerorpc')
   , Server = require('./server').Server
+  , ChunkStore = require('./chunk_store').ChunkStore
   ;
 
 var Peer = module.exports.Peer = function (name, port, masterport) {
   this.name = name;
   this.port = port;
+  this.address = 'tcp://0.0.0.0:' + port;
   this.master = new Server('tcp://0.0.0.0:' + masterport, 'master');
+
+  this.chunkStore = new ChunkStore();
+  this.registerWithMaster();
 
   this._setupRpcServer();
 };
@@ -15,6 +20,14 @@ var Peer = module.exports.Peer = function (name, port, masterport) {
 Peer.prototype.start = function () {
   this._server.bind('tcp://0.0.0.0:' + this.port);
   console.log('Peer ' + this.name + ' started on ' + this.port);
+
+};
+
+Peer.prototype.registerWithMaster = function() {
+  console.log('Sending register to master', this.master.address);
+  this.master.getClient().invoke('register', this.name, this.address, function (err, response) {
+    // TODO anything?
+  });
 };
 
 Peer.prototype.handleStream = function (filename, startingat, reply) {
@@ -35,6 +48,7 @@ Peer.prototype.handleStream = function (filename, startingat, reply) {
 Peer.prototype._setupRpcServer = function () {
   this._server = new zerorpc.Server({
     stream: this.handleStream.bind(this)
+  , ping: function (r) { r(); }
   });
 };
 

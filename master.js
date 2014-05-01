@@ -1,9 +1,20 @@
 'use strict';
-var zerorpc = require('zerorpc');
+var zerorpc = require('zerorpc')
+  , ChildTracker = require('./child_tracker').ChildTracker
+  , Server = require('./server').Server
+  ;
 
 var Master = module.exports.Master = function (port) {
   this.port = port;
   this._setupRpcServer();
+  this.childTracker = new ChildTracker();
+
+  this.childTracker.on('serverStillAlive', function (c) {
+    console.log('Still alive: ', c);
+  });
+  this.childTracker.on('childgone', function (c) {
+    console.log('Child Dead: ', c);
+  });
 };
 
 Master.prototype._setupRpcServer = function () {
@@ -30,6 +41,11 @@ Master.prototype.handleReport = function (filename, chunknumber, update, reply) 
 };
 
 Master.prototype.handleRegister = function (peername, peeraddress, reply) {
+  console.log('Got register from', peername, peeraddress);
+  var s = new Server(peeraddress, peername)
+    , added = this.childTracker.add(s)
+    ;
+  console.log('Added child? ', added);
   reply(null, 'ok');
 };
 

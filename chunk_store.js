@@ -37,6 +37,13 @@ ChunkStore.prototype.delete = function (filename, chunk, data) {
   }
 };
 
+ChunkStore.prototype.get = function(filename, chunk) {
+  if (this.chunks.hasOwnProperty(filename+chunk)) {
+    return this.chunks[filename+chunk];
+  } else {
+    return null;
+  }
+};
 
 
 if (require.main === module) {

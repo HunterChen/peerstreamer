@@ -65,7 +65,7 @@ Master.prototype.handleQuery = function (filename, chunknumber, reply) {
     , servers = []
     ;
   serverNames.forEach(function(serverName) {
-    servers.push(this.childTracker.getChild(serverName));
+    servers.push(this.childTracker.getChild(serverName).asSerializableObject());
   }.bind(this));
   reply(null, servers);
 };

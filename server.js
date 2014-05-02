@@ -19,3 +19,7 @@ Server.prototype.getClient = function (options) {
   client.connect(this.address);
   return client;
 };
+
+Server.prototype.asSerializableObject = function() {
+	return {name:this.name, address:this.address};
+};

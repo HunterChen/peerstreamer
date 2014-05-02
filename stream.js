@@ -1,5 +1,5 @@
 'use strict';
-
+var Server = require('./server').Server;
 
 var Stream = module.exports.Stream = function (filename, initialChunk, chunkStore, master) {
   this.filename = filename;
@@ -71,7 +71,13 @@ Stream.prototype.advanceCursorFromSource = function (callback) {
 
 Stream.prototype.advanceCursorFromNullSource = function (callback) {
   // Then I need to find one.
-  this.master.getClient().invoke('query', this.filename, this.chunkCursor, function (err, possiblePeers) {
+  this.master.getClient().invoke('query', this.filename, this.chunkCursor, function (err, serializedPossiblePeers) {
+    // Convert the raw {name: 'name', address: 'address'} peer list into a list of Servers
+    var possiblePeers = [];
+    serializedPossiblePeers.forEach(function (s) {
+      possiblePeers.push(new Server(s.name, s.address));
+    });
+
     if (err) {
       return callback(err);
     }

@@ -38,6 +38,19 @@ ChildTracker.prototype.add = function (server) {
   }
 };
 
+ChildTracker.prototype.getChild = function (serverName) {
+  // Returns the Server object if we have it, or null;
+  if (this.tracking.hasOwnProperty(serverName)) {
+    return this.tracking[serverName];
+  } else {
+    return null;
+  }
+};
+
+ChildTracker.prototype.hasChild = function (serverName) {
+  return !!this.getChild(serverName);
+};
+
 ChildTracker.prototype._ping = function (server) {
   var client = server.getClient({
     timeout: this.heartbeatTimeout

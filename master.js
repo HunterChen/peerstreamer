@@ -50,7 +50,7 @@ Master.prototype.handleRegister = function (peername, peeraddress, reply) {
 };
 
 Master.prototype.handleQuery = function (filename, chunknumber, reply) {
-  reply(null, 'ok');
+  reply(null, []);
 };
 
 

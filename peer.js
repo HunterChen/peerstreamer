@@ -3,6 +3,7 @@
 var zerorpc = require('zerorpc')
   , Server = require('./server').Server
   , ChunkStore = require('./chunk_store').ChunkStore
+  , Stream = require('./stream').Stream
   ;
 
 var Peer = module.exports.Peer = function (name, port, masterport) {
@@ -13,7 +14,16 @@ var Peer = module.exports.Peer = function (name, port, masterport) {
 
   this.chunkStore = new ChunkStore();
   this.registerWithMaster();
+  var stream = new Stream('file', 0, this.chunkStore, this.master);
 
+  this.chunkStore.on('addedData', function(info) {
+    console.log(info);
+  });
+
+  stream.advanceCursor(function(err, advanced){
+    console.log(err, advanced);
+  });
+  
   this._setupRpcServer();
 };
 

@@ -66,7 +66,7 @@ Stream.prototype.advanceCursorFromSource = function (callback) {
     this.chunkStore.add(this.filename, this.chunkCursor, chunkData);
     this.chunkCursor++;
     return callback(null, true);
-  });
+  }.bind(this));
 };
 
 Stream.prototype.advanceCursorFromNullSource = function (callback) {

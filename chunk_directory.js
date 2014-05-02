@@ -118,7 +118,6 @@ if (require.main === module) {
   cd.insert(f1, 1, s1);
   console.log('servers that have f1-1', cd.getServers(f1, 1));
   console.log('servers that have f2-1', cd.getServers(f2, 1));
-  //console.log(cd.getServers(f2, 1));
   cd.removeServer(s1);
   console.log('servers that have f1-1', cd.getServers(f1, 1));
   console.log('servers that have f2-1', cd.getServers(f2, 1));

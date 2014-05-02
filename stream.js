@@ -75,7 +75,7 @@ Stream.prototype.advanceCursorFromNullSource = function (callback) {
     // Convert the raw {name: 'name', address: 'address'} peer list into a list of Servers
     var possiblePeers = [];
     serializedPossiblePeers.forEach(function (s) {
-      possiblePeers.push(new Server(s.name, s.address));
+      possiblePeers.push(new Server(s.address, s.name));
     });
 
     if (err) {

@@ -40,6 +40,11 @@ Master.prototype.handleGet = function (filename, chunknumber, reply) {
 
 Master.prototype.handleReport = function (report, reply) {
   console.log('Got report:', report);
+  if (!this.childTracker.hasChild(report.from)) {
+    //TODO: handle this better
+    return reply('child not here', 'nok');
+  }
+
   if (report.action === 'ADDED') {
     this.ChunkDirectory.insert(report.filename, report.chunk, report.from);
   } else if ( report.action === 'DELETED') {

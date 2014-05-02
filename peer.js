@@ -57,10 +57,21 @@ Peer.prototype.handleStream = function (filename, startingat, reply) {
   _getOne();
 };
 
+Peer.prototype.handleGet = function (filename, chunk, reply) {
+  // TODO (is this from a peer or a child?)
+  // if it's from a child I think we want to start streaming
+  // until we get it,
+  // But for peer we want to just reject.
+  // But for now just check chunkstore
+  console.log('Serving get for', filename, ':', chunk);
+  reply(null, this.chunkStore.get(filename, chunk));
+};
+
 Peer.prototype._setupRpcServer = function () {
   this._server = new zerorpc.Server({
     stream: this.handleStream.bind(this)
   , ping: function (r) { r(); }
+  , get: this.handleGet.bind(this)
   });
 };
 

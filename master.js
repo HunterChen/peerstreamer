@@ -2,12 +2,14 @@
 var zerorpc = require('zerorpc')
   , ChildTracker = require('./child_tracker').ChildTracker
   , Server = require('./server').Server
+  , ChunkDirectory = require('./chunk_directory').ChunkDirectory
   ;
 
 var Master = module.exports.Master = function (port) {
   this.port = port;
   this._setupRpcServer();
   this.childTracker = new ChildTracker();
+  this.ChunkDirectory = new ChunkDirectory();
 
   this.childTracker.on('serverStillAlive', function (c) {
     console.log('Still alive: ', c);
@@ -36,7 +38,16 @@ Master.prototype.handleGet = function (filename, chunknumber, reply) {
   reply(null, data);
 };
 
-Master.prototype.handleReport = function (filename, chunknumber, update, reply) {
+Master.prototype.handleReport = function (report, reply) {
+  console.log('Got report:', report);
+  if (report.action === 'ADDED') {
+    this.ChunkDirectory.insert(report.filename, report.chunk, report.from);
+  } else if ( report.action === 'DELETED') {
+    this.ChunkDirectory.remove(report.filename, report.chunk, report.from);
+  } else {
+    //WHAT?
+    throw new Error('Unexpected report action: ' + report.action);
+  }
   reply(null, 'ok');
 };
 
@@ -50,7 +61,13 @@ Master.prototype.handleRegister = function (peername, peeraddress, reply) {
 };
 
 Master.prototype.handleQuery = function (filename, chunknumber, reply) {
-  reply(null, []);
+  var serverNames = this.ChunkDirectory.getServers(filename, chunknumber)
+    , servers = []
+    ;
+  serverNames.forEach(function(serverName) {
+    servers.push(this.childTracker.getChild(serverName));
+  }.bind(this));
+  reply(null, servers);
 };
 
 

@@ -3,7 +3,7 @@
 var zerorpc = require('zerorpc')
   , Server = require('./server').Server
   , ChunkStore = require('./chunk_store').ChunkStore
-  , Reporter = require('./reporter')
+  , Reporter = require('./reporter').Reporter
   , Stream = require('./stream').Stream
   ;
 

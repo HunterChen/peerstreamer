@@ -33,8 +33,8 @@ Master.prototype.start = function () {
   console.log('Master started on ' + this.port);
 };
 
-Master.prototype.handleGet = function (filename, chunknumber, reply) {
-  var data = filename + ':' + chunknumber;
+Master.prototype.handleGet = function (filename, chunk, fromChild, streamId, reply) {
+  var data = filename + ':' + chunk;
   reply(null, data);
 };
 

@@ -64,6 +64,7 @@ Peer.prototype.handleGet = function (filename, chunk, reply) {
   // But for peer we want to just reject.
   // But for now just check chunkstore
   console.log('Serving get for', filename, ':', chunk);
+  
   reply(null, this.chunkStore.get(filename, chunk));
 };
 

@@ -11,6 +11,7 @@
   "dependencies": {
     "zerorpc": "~0.9.3",
     "optimist": "~0.6.1",
-    "jshint": "~2.5.0"
+    "jshint": "~2.5.0",
+    "uuid": "~1.4.1"
   }
 }

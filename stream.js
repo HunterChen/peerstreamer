@@ -109,7 +109,7 @@ Stream.prototype.advanceCursorFromSource = function (callback) {
 
 Stream.prototype.advanceCursorFromNullSource = function (callback) {
   // Then I need to find one.
-  this.master.getClient().invoke('query', this.filename, this.chunkCursor, function (err, serialized`siblePeers) {
+  this.master.getClient().invoke('query', this.filename, this.chunkCursor, function (err, serializedPossiblePeers) {
     // Convert the raw {name: 'name', address: 'address'} peer list into a list of Servers
     var possiblePeers = [];
     serializedPossiblePeers.forEach(function (s) {

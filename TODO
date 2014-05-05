@@ -1,0 +1,21 @@
+stream - skip self
+
+master - clean up deaths
+
+peer, master - handle server error  -- don't crash
+
+streamamanger - stream id if given wrong one
+
+timeout -- handle out of orders
+
+?? wrong file requested on same stream
+
+
+periodic requery
+
+chunk_store
+	LRU eviction chunk_store
+	chunk_store to disk
+
+
+us  - write scripts :D :D :D  

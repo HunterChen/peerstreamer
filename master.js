@@ -35,7 +35,8 @@ Master.prototype.start = function () {
 
 Master.prototype.handleGet = function (filename, chunk, fromChild, streamId, reply) {
   var data = filename + ':' + chunk;
-  reply(null, data);
+  console.log("Serving get for", filename, chunk);
+  reply(null, {data:data, streamId: null});
 };
 
 Master.prototype.handleReport = function (report, reply) {

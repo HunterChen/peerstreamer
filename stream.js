@@ -77,7 +77,7 @@ Stream.prototype.advanceCursor = function (callback) {
         this.setSource(null);
         return this.advanceCursorFromNullSource(callback);
       }
-    });
+    }.bind(this));
   }
 };
 
@@ -156,7 +156,7 @@ Stream.prototype.advanceCursorFromPossiblePeers = function (possiblePeers, callb
         return callback(null, true);
       } else {
         // Fuck. try the next one.
-        this.advanceFromQueryResult(possiblePeers, callback);
+        this.advanceCursorFromPossiblePeers(possiblePeers, callback);
       }
     }.bind(this));
   }
@@ -206,6 +206,7 @@ Stream.prototype.registerPositionCallback = function (chunk, callback) {
     return false;
   } else {
     this._positionCallbacks[chunk] = callback;
+    setImmediate(this.checkWaitingCallbacks.bind(this));
     return true;
   }
 };

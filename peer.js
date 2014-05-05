@@ -5,6 +5,7 @@ var zerorpc = require('zerorpc')
   , ChunkStore = require('./chunk_store').ChunkStore
   , Reporter = require('./reporter').Reporter
   , Stream = require('./stream').Stream
+  , StreamManager = require('./stream_manager').StreamManager
   ;
 
 var Peer = module.exports.Peer = function (name, port, masterport) {
@@ -16,16 +17,13 @@ var Peer = module.exports.Peer = function (name, port, masterport) {
   this.chunkStore = new ChunkStore();
   this.reporter = new Reporter(this.chunkStore, this.master, this);
   this.registerWithMaster();
-  var stream = new Stream('file', 0, this.chunkStore, this.master);
 
   this.chunkStore.on('addedData', function(info) {
     console.log(info);
   });
 
-  stream.advanceCursor(function(err, advanced){
-    console.log(err, advanced);
-  });
-  
+  this.streamManager = new StreamManager(this.chunkStore, this.master);
+
   this._setupRpcServer();
 };
 
@@ -42,35 +40,34 @@ Peer.prototype.registerWithMaster = function() {
   });
 };
 
-Peer.prototype.handleStream = function (filename, startingat, reply) {
-  startingat = parseInt(startingat, 10);
-  var current = startingat
-    , client = this.master.getClient()
-    ;
-  var _getOne = function () {
-    client.invoke('get', filename, current, function (err, res, more){
-      reply(null, res, true);
-      current++;
-      _getOne();
-    });
-  }.bind(this);
-  _getOne();
-};
+Peer.prototype.handleGet = function (filename, chunk, fromChild, streamId, reply) {
+  if (fromChild) {
+    console.log('Serving get from child', filename, ':', chunk);
+    // TODO what if stream is null
+    var stream = this.streamManager.get(filename, chunk, streamId);
+    if (chunk < stream.position) {
+      return reply('Chunk requested for file', filename, ':', chunk, 'is less than stream', streamId, 'position', stream.position);
+    }
+    var registered = stream.registerPositionCallback(chunk, function () {
+      var data = this.chunkStore.get(filename, chunk);
+      stream.advancePosition();
+      reply(null, {data:data, streamId: stream.id});
+    }.bind(this));
+    if (!registered) {
+      // Then the callback to registerPositionCallback will NOT
+      // be called, so we're not calling reply twice.
+      reply('Already Waiting for', filename, ':', chunk, ' stop sending duplicates');
+    }
 
-Peer.prototype.handleGet = function (filename, chunk, reply) {
-  // TODO (is this from a peer or a child?)
-  // if it's from a child I think we want to start streaming
-  // until we get it,
-  // But for peer we want to just reject.
-  // But for now just check chunkstore
-  console.log('Serving get for', filename, ':', chunk);
-  reply(null, this.chunkStore.get(filename, chunk));
+  } else {
+    // It's a peer, so just give what we have. Perform our best.
+    reply(null, {data:this.chunkStore.get(filename, chunk), streamId: null});
+  }
 };
 
 Peer.prototype._setupRpcServer = function () {
   this._server = new zerorpc.Server({
-    stream: this.handleStream.bind(this)
-  , ping: function (r) { r(); }
+    ping: function (r) { r(); }
   , get: this.handleGet.bind(this)
   });
 };

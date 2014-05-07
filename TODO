@@ -1,19 +1,28 @@
-peer, master - handle master dying
-what if a child flaps - dies and comes up before we know it died?
-handle failed query to master?
-error needs to be special if it is the master that we killed while looking for a chunk.
 
-periodic requery
-implement some smart queries
+(NE) ## Handle Master Dying
+ - go to super master, but continue to check our old one
+ - we don't register with the super master, we treat it simply
+   as a source, like an exit library does with its parents
+ - implementation thing: error needs to be special if it is the master that we killed while looking for a chunk.
 
-the heirarchy, and how that works out. (integrating things into a `node`)
+(NE) ## Child flaps
+ - Child will then register when the master thinks he's alive, which is weird
+ - handle the death, then accept.
 
-chunk_store
-	LRU eviction chunk_store
-	chunk_store to disk
-	
-video "entry" into the system
-video "exit" from the system
+(LS) ## More "Correct Operation"
+ - periodically requerying the master
+ - the master load balances by doing it randomally
+
+(LS) ## Hierarchy goals
+ - two layers, so we need to set up a simple
+   test for that.
+ - combine peer and master into a "node"
+ - figure out how to get video into the system
+ - get video out
+
+(LS) ## Chunk Store
+ - handle deletion - LRU
+ - handle marking chunks as "undeleteable" - for this we will need to reap stale streams
 
 
 --------------

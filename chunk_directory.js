@@ -35,7 +35,7 @@ ChunkDirectory.prototype.insert = function (filename, chunk, server) {
 
 ChunkDirectory.prototype._insertServerFC = function(fc, server) {
   if (this.servers.hasOwnProperty(server)) {
-      this.servers[server].push([fc]);
+      this.servers[server].push(fc);
   } else {
     this.servers[server] = [fc];
   }

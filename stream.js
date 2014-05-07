@@ -6,7 +6,9 @@ var util = require('util')
   , Server = require('./server').Server
   ;
 
-var BUFFER_SIZE_IN_CHUNKS = 10;
+var BUFFER_SIZE_IN_CHUNKS = 10 // buffer size in chunks. good comment bro.
+  , GETTIMEOUT = 3 // seconds we wait to connect a client
+  ;
 
 var Stream = module.exports.Stream = function (filename, initialChunk, chunkStore, thisNode) {
   // Position is NEXT thing that is allowed to be read.
@@ -45,13 +47,23 @@ Stream.prototype.setSource = function (server) {
 };
 
 Stream.prototype._getChunkFromSource = function (source, filename, chunk, isMaster, streamId, callback) {
-  source.getClient().invoke('get', filename, chunk, isMaster, streamId, function (err, res) {
-    if (err) {
-      return callback(err);
-    } else {
-      return callback(null, res);
+  var client = source.getClient({
+      timeout: GETTIMEOUT
+    })
+    , callbackCalled = false
+    ;
+
+  client.invoke('get', filename, chunk, isMaster, streamId, function (err, res) {
+    if (!callbackCalled) {
+      callbackCalled = true;
+      if (err) {
+        console.log('Stream', this.id, 'Error getting chunk from source' + source.name + ':' + source.address, err);
+        return callback(err);
+      } else {
+        return callback(null, res);
+      }
     }
-  });
+  }.bind(this));
 };
 
 
@@ -60,6 +72,7 @@ Stream.prototype.advanceCursor = function (callback) {
   /// Will callback with (err Err, advanced bool)
   if (this.chunkStore.get(this.filename, this.chunkCursor) !== null) {
     // Great. Chunk store has it already. Move.
+    console.log('Stream', this.id, 'advanced chunk from chunkStore');
     this.advanceChunkCursor();
     return setImmediate(function () {
       callback(null, true);
@@ -94,12 +107,14 @@ Stream.prototype.advanceCursorFromSource = function (callback) {
   , this._chunkSourceStreamId
   , function (err, response) {
     if (err) {
-      return callback(err);
+      return callback(err, false);
     }
     
     if (response.data === null) {
+      console.log('Stream', this.id, 'failed to advance chunk from', this.chunkSource.name);
       return callback(null, false);
     }
+    console.log('Stream', this.id, 'advanced chunk from', this.chunkSource.name);
     this.chunkStore.add(this.filename, this.chunkCursor, response.data);
     this.advanceChunkCursor();
     this._chunkSourceStreamId = response.streamId;
@@ -111,10 +126,14 @@ Stream.prototype.advanceCursorFromNullSource = function (callback) {
   // Then I need to find one.
   this.thisNode.master.getClient().invoke('query', this.filename, this.chunkCursor, function (err, serializedPossiblePeers) {
     // Convert the raw {name: 'name', address: 'address'} peer list into a list of Servers
-    var possiblePeers = [];
+    var possiblePeers = []
+      , peerString = ':'
+      ;
     serializedPossiblePeers.forEach(function (s) {
+      peerString += s.name + ':';
       possiblePeers.push(new Server(s.address, s.name));
     });
+    console.log('Stream', this.id, 'response to query result>', peerString);
 
     if (err) {
       return callback(err);
@@ -154,14 +173,13 @@ Stream.prototype.advanceCursorFromPossiblePeers = function (possiblePeers, callb
 
     this.setSource(nextPeer);
     this.advanceCursorFromSource(function(err, advanced) {
-      if (err) {
-        return callback(err);
-      }
       if (advanced) {
         // Hurray. Nothing more do to,
         return callback(null, true);
       } else {
-        // Fuck. try the next one.
+        // Fuck either there was an error, or the other person
+        // didn't have it. TODO: distinguish these cases?
+        // for now, MOVE ON.
         this.advanceCursorFromPossiblePeers(possiblePeers, callback);
       }
     }.bind(this));

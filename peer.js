@@ -18,10 +18,6 @@ var Peer = module.exports.Peer = function (name, port, masterport) {
   this.reporter = new Reporter(this.chunkStore, this.master, this);
   this.registerWithMaster();
 
-  this.chunkStore.on('addedData', function(info) {
-    console.log(info);
-  });
-
   this.streamManager = new StreamManager(this.chunkStore, this);
 
   this._setupRpcServer();

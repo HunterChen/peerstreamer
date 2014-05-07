@@ -21,13 +21,15 @@ CARLOS=tcp://0.0.0.0:$CARLOSPORT
 # startthem
 echo "STARTING ALICE ON $ALICEPORT"
 node peer.js --port $ALICEPORT  --name alice  --masterport $MASTERPORT > testoutput/alice.log &
+ALICEPID=$!
 
 echo "STARTING BOB ON $BOBPORT"
 node peer.js --port $BOBPORT    --name bob    --masterport $MASTERPORT > testoutput/bob.log &
+BOBPID=$!
 
 echo "STARTING CARLOS ON $CARLOSPORT"
 node peer.js --port $CARLOSPORT --name carlos --masterport $MASTERPORT > testoutput/carlos.log &
-
+CARLOSPID=$!
 
 sleep 1;
 
@@ -83,6 +85,23 @@ echo "Geting gameofthrones 1..50 from carlos, he should get some from Alice, the
   do
     echo `zerorpc -j -pj $CARLOS get \"gameofthrones\" $i true \"$SID3\" | tail -n1`;
   done
+
+
+# Let's kill some things
+echo "Killing ALICE (off with her head)"
+kill $ALICEPID
+# sleep until master should notice (based on constants in child_tracker.js)
+sleep 6
+
+# Alice had GOT 0 - 20, so let's have Bob ask for game of thrones 0, Server
+# Should _not_ send him to alice, but rather to carlos
+# But now let's kill Carlos, so Bob cannot get 0 - 5 from carlos (maybe he'll sneak in 1 or 2)
+kill $CARLOSPID
+echo "Getting gameofthrones, 0 from bob, who should get it from CARLOS because ALICE DEAD"
+  OUTPUT=`zerorpc -j -pj $BOB get \"gameofthrones\" 0 true null | tail -n1`;
+  SID2=`echo $OUTPUT | jq -r .streamId`;
+  echo $OUTPUT;
+  echo $SID2;
 
 
 # great.

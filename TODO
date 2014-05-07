@@ -15,6 +15,7 @@ chunk_store
 	LRU eviction chunk_store
 	chunk_store to disk
 
+handle failed query to master?
 
 us  - write scripts :D :D :D 
 
@@ -24,3 +25,4 @@ cleanign streams
 
 implement some smart queries
 
+error needs to be special if it is the master that we killed while looking for a chunk.

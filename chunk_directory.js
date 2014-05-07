@@ -69,12 +69,8 @@ ChunkDirectory.prototype.getServers = function (filename, chunk) {
 
 ChunkDirectory.prototype.removeServer = function (server) {
   // Removes all of the entries for this server.
-
-  var chunksToRemove = this.servers[server];
-  console.log(chunksToRemove);
-  if (chunksToRemove === undefined) {
-
-  } else {
+  if (this.servers.hasOwnProperty(server)) {
+    var chunksToRemove = this.servers[server];
     for (var i = 0; i < chunksToRemove.length; i++) {
       var fc = chunksToRemove[i];
       var index = this.fcDirectory[fc].indexOf(server);
@@ -82,7 +78,10 @@ ChunkDirectory.prototype.removeServer = function (server) {
         this.fcDirectory[fc].splice(index, 1);
       }
     }
+  } else {
+
   }
+  
   delete this.servers[server];
   this.emit('serverRemoved', {'name':server.name});
 

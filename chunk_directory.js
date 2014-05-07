@@ -20,7 +20,7 @@ util.inherits(ChunkDirectory, events.EventEmitter);
 
 ChunkDirectory.prototype.insert = function (filename, chunk, server) {
   var fc = filename + chunk;
-  if (fc in this.fcDirectory) {
+  if (this.fcDirectory.hasOwnProperty(fc)) {
     if (this.fcDirectory[fc].indexOf(server) === -1) {
       this.fcDirectory[fc].push(server);
       this._insertServerFC(fc, server);
@@ -34,7 +34,7 @@ ChunkDirectory.prototype.insert = function (filename, chunk, server) {
 };
 
 ChunkDirectory.prototype._insertServerFC = function(fc, server) {
-  if (server in this.servers) {
+  if (this.servers.hasOwnProperty(server)) {
       this.servers[server].push([fc]);
   } else {
     this.servers[server] = [fc];
@@ -52,7 +52,7 @@ ChunkDirectory.prototype._removeServerFC = function(fc, server) {
 ChunkDirectory.prototype.remove = function (filename, chunk, server) {
   // Removes association of this filename / chunk with the server
   var fc = filename + chunk;
-  if (fc in this.fcDirectory) {
+  if (this.fcDirectory.hasOwnProperty(fc)) {
     var index = this.fcDirectory[fc].indexOf(server);
     if (index !== -1) {
       this.fcDirectory[fc].splice(index, 1);
@@ -85,7 +85,7 @@ ChunkDirectory.prototype.removeServer = function (server) {
   }
   delete this.servers[server];
   this.emit('serverRemoved', {'name':server.name});
-  
+
 };
 
 

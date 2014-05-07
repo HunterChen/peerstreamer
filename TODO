@@ -1,7 +1,3 @@
-stream - skip self
-
-master - clean up deaths
-
 peer, master - handle server error  -- don't crash
 
 streamamanger - stream id if given wrong one
@@ -12,6 +8,8 @@ timeout -- handle out of orders
 
 
 periodic requery
+
+what if a child flaps - dies and comes up before we know it died?
 
 chunk_store
 	LRU eviction chunk_store

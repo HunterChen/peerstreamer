@@ -8,7 +8,7 @@ var util = require('util')
 
 var BUFFER_SIZE_IN_CHUNKS = 10;
 
-var Stream = module.exports.Stream = function (filename, initialChunk, chunkStore, master) {
+var Stream = module.exports.Stream = function (filename, initialChunk, chunkStore, thisNode) {
   // Position is NEXT thing that is allowed to be read.
   // chunkCursor is the chunk __after__ the last one we have,
   //  __or______ the NEXT one we have to get.
@@ -17,7 +17,7 @@ var Stream = module.exports.Stream = function (filename, initialChunk, chunkStor
   this.initialChunk = initialChunk;
   this.chunkCursor = initialChunk;
   this.position = initialChunk;
-  this.master = master;
+  this.thisNode = thisNode;
 
   this.chunkSource = null;
   this._chunkSourceIsMaster = false;
@@ -109,7 +109,7 @@ Stream.prototype.advanceCursorFromSource = function (callback) {
 
 Stream.prototype.advanceCursorFromNullSource = function (callback) {
   // Then I need to find one.
-  this.master.getClient().invoke('query', this.filename, this.chunkCursor, function (err, serializedPossiblePeers) {
+  this.thisNode.master.getClient().invoke('query', this.filename, this.chunkCursor, function (err, serializedPossiblePeers) {
     // Convert the raw {name: 'name', address: 'address'} peer list into a list of Servers
     var possiblePeers = [];
     serializedPossiblePeers.forEach(function (s) {
@@ -132,7 +132,7 @@ Stream.prototype.advanceCursorFromNullSource = function (callback) {
         // Dont need to check if the master has it,
         // because the master ALWAYS has it. :D
         // TODO handle error
-        this.setSource(this.master);
+        this.setSource(this.thisNode.master);
         this._chunkSourceIsMaster = true;
         this.advanceCursorFromSource(callback);
       }
@@ -146,7 +146,13 @@ Stream.prototype.advanceCursorFromPossiblePeers = function (possiblePeers, callb
     return callback(null, false);
   } else {
     // Try one.
-    this.setSource(possiblePeers.shift());
+    var nextPeer = possiblePeers.shift();
+    if (nextPeer.name === this.thisNode.name) {
+      // Short circuit recurse.
+      return this.advanceCursorFromPossiblePeers(possiblePeers, callback);
+    }
+
+    this.setSource(nextPeer);
     this.advanceCursorFromSource(function(err, advanced) {
       if (err) {
         return callback(err);

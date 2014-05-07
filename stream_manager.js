@@ -6,10 +6,10 @@ Holds a bunch of streams
 
 var Stream = require('./stream').Stream;
 
-var StreamManager = module.exports.StreamManager = function (chunkStore, master) {
+var StreamManager = module.exports.StreamManager = function (chunkStore, thisNode) {
   this.streams = {};
   this.chunkStore = chunkStore;
-  this.master = master;
+  this.thisNode = thisNode;
 };
 
 
@@ -22,7 +22,7 @@ StreamManager.prototype.get = function (filename, chunk, streamId) {
   console.log('Get stream', filename, ':', chunk, '>', streamId === null);
   if (typeof(streamId) === 'undefined' || streamId === null) {
     // Make a new one.
-    var newStream = new Stream(filename, chunk, this.chunkStore, this.master);
+    var newStream = new Stream(filename, chunk, this.chunkStore, this.thisNode);
     newStream.fillBuffer();
     this.streams[newStream.id] = newStream;
     return newStream;

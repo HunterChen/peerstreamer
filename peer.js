@@ -22,7 +22,7 @@ var Peer = module.exports.Peer = function (name, port, masterport) {
     console.log(info);
   });
 
-  this.streamManager = new StreamManager(this.chunkStore, this.master);
+  this.streamManager = new StreamManager(this.chunkStore, this);
 
   this._setupRpcServer();
 };

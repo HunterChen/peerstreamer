@@ -14,10 +14,11 @@ var Master = module.exports.Master = function (port) {
   this.childTracker.on('serverStillAlive', function (c) {
     console.log('Still alive: ', c);
   });
+  
   this.childTracker.on('childgone', function (c) {
     console.log('Child Dead: ', c);
-    this.ChunkDirectory.removeServer(c);
-  });
+    this.ChunkDirectory.removeServer(c.name);
+  }.bind(this));
 
 };
 

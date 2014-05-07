@@ -35,7 +35,7 @@ Master.prototype.start = function () {
 
 Master.prototype.handleGet = function (filename, chunk, fromChild, streamId, reply) {
   var data = filename + ':' + chunk;
-  console.log("Serving get for", filename, chunk);
+  console.log('Serving get for', filename, chunk);
   reply(null, {data:data, streamId: null});
 };
 
@@ -64,6 +64,12 @@ Master.prototype.handleRegister = function (peername, peeraddress, reply) {
     ;
   console.log('Added child? ', added);
   reply(null, 'ok');
+};
+
+Master.prototype.handleDeath = function(c) {
+  if (c !== null) {
+    this.ChunkDirectory.removeServer(c);
+  }
 };
 
 Master.prototype.handleQuery = function (filename, chunknumber, reply) {

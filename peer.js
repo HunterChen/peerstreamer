@@ -41,7 +41,7 @@ Peer.prototype.registerWithMaster = function() {
 };
 
 Peer.prototype.handleGet = function (filename, chunk, fromChild, streamId, reply) {
-  console.log('GET: ', filename, ":", chunk, fromChild, streamId);
+  console.log('GET: ', filename, ':', chunk, fromChild, streamId);
   if (fromChild) {
     console.log('Serving get from child', filename, ':', chunk);
     // TODO what if stream is null

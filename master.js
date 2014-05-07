@@ -16,7 +16,10 @@ var Master = module.exports.Master = function (port) {
   });
   this.childTracker.on('childgone', function (c) {
     console.log('Child Dead: ', c);
+    this.ChunkDirectory.removeServer(c);
   });
+
+
 };
 
 Master.prototype._setupRpcServer = function () {
@@ -66,11 +69,6 @@ Master.prototype.handleRegister = function (peername, peeraddress, reply) {
   reply(null, 'ok');
 };
 
-Master.prototype.handleDeath = function(c) {
-  if (c !== null) {
-    this.ChunkDirectory.removeServer(c);
-  }
-};
 
 Master.prototype.handleQuery = function (filename, chunknumber, reply) {
   var serverNames = this.ChunkDirectory.getServers(filename, chunknumber)

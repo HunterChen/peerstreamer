@@ -1,4 +1,4 @@
-peer, master - handle server error  -- don't crash
+peer, master - handle master dying
 
 streamamanger - stream id if given wrong one
 

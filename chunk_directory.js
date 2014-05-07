@@ -78,11 +78,11 @@ ChunkDirectory.prototype.removeServer = function (server) {
         this.fcDirectory[fc].splice(index, 1);
       }
     }
+    delete this.servers[server];
   } else {
 
   }
-  
-  delete this.servers[server];
+
   this.emit('serverRemoved', {'name':server.name});
 
 };

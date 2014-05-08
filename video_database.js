@@ -48,7 +48,7 @@ VideoDatabase.prototype.get = function (filename, chunk, callback) {
     if (err) {
       return callback(err);
     } else {
-      return callback(null, data);
+      return callback(null, data.toString('base64'));
     }
   });
 };

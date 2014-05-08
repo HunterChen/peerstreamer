@@ -16,22 +16,29 @@ var VideoStreamer = function (getInterval, source, filename) {
   this.chunk = 0;
   this.streamId = null;
 
-  this.rpcClient = new zerorpc.Client(source);
+  //console.log(source);
+  this.rpcClient = new zerorpc.Client();
+  this.rpcClient.connect(source);
 };
 
 VideoStreamer.prototype.start = function () {
-  this._spawnVlc(this._writeOne.bind(this));
+  this._spawnVlc();
+  this._writeOne()
 };
 
 VideoStreamer.prototype._spawnVlc = function (ready) {
   // Hard code this jank
   var vlcPath = process.platform === 'darwin' ? '/Applications/VLC.app/Contents/MacOS/VLC' : 'vlc';
-  this.vlc = child_process.spawn(vlcPath, ['-']);
-  process.on('SIGINT', this._killVlc.bind(this));
+  //vlcPath = 'cat';
+  this.vlc = child_process.spawn(vlcPath, ['-'], {
+    stdio: ['pipe', 1, 2]
+  });
+  process.on('SIGINT', this._shutdown.bind(this));
 };
 
-VideoStreamer.prototype._killVlc = function () {
+VideoStreamer.prototype._shutdown = function () {
   this.vlc.kill('SIGKILL');
+  process.exit(0);
 };
 
 VideoStreamer.prototype._writeOne = function () {
@@ -39,21 +46,22 @@ VideoStreamer.prototype._writeOne = function () {
     if (err) {
       throw new Error(err);
     }
-    if (data === false) {
+    if (data.data === false) {
       // EOF.
-      this._killVlc();
+      //this.vlc.wait();
     } else {
-      this.stdout.write(data.data);
+      console.log("Got chunk", this.chunk, data.data.substring(0,100));
+      this.vlc.stdin.write(new Buffer(data.data, 'base64'));
       this.streamId = data.streamId;
       this.chunk++;
-      setTimeout(this._writeOne.bind(this), 1);
+      setTimeout(this._writeOne.bind(this), 10);
     }
-  });
+  }.bind(this));
 };
 
 if (require.main === module) {
   var argv = require('optimist').demand(['interval', 'source', 'filename']).argv
-    , vs = new VideoStreamer(argv.directory)
+    , vs = new VideoStreamer(argv.interval, argv.source, argv.filename)
     ;
   vs.start();
 };

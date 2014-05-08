@@ -8,6 +8,7 @@ var zerorpc = require('zerorpc')
   , Reporter = require('./reporter').Reporter
   , Stream = require('./stream').Stream
   , StreamManager = require('./stream_manager').StreamManager
+  , VideoDatabase = require('./video_database').VideoDatabase
   ;
 
 
@@ -31,6 +32,12 @@ var Node = module.exports.Node = function (options) {
     this.hasMaster = true;
   } else {
     this.hasMaster = false;
+    if (options.videodatabase) {
+      // create one.
+      this.videoDatabase = new VideoDatabase(options.videodatabase)
+    } else {
+      this.videoDatabase = null;
+    }
   }
 
   this.childTracker.on('serverStillAlive', function (c) {
@@ -69,9 +76,15 @@ Node.prototype._setupRpcServer = function () {
 
 Node.prototype.handleGet = function (filename, chunk, fromChild, streamId, reply) {
   if (!this.hasMaster) {
-    var data = filename + ':' + chunk;
     console.log('Serving get for', filename, chunk);
-    return reply(null, {data:data, streamId: null});
+    if (this.videoDatabase) {
+      return this.videoDatabase.get(filename, chunk, function (err, data) {
+        reply(err, {data:data, streamId: null})
+      });
+    } else {
+      var data = filename + ':' + chunk;
+      return reply(null, {data:data, streamId: null});
+    }
   }
 
   console.log('GET: ', filename, ':', chunk, fromChild, streamId);
@@ -141,11 +154,16 @@ Node.prototype.handleQuery = function (filename, chunknumber, reply) {
 
 
 if (require.main === module) {
-  var argv = require('optimist').demand(['port', 'name']).describe('masterport', 'optionally specify master').argv
+  var argv = require('optimist')
+    .demand(['port', 'name'])
+    .describe('masterport', 'optionally specify master')
+    .describe('videodatabase', 'specificy directory to use as video database for masterless nodes')
+    .argv
     , n = new Node({
       name: argv.name
     , port: argv.port
     , masterport: argv.masterport
+    , videodatabase: argv.videodatabase
     })
     ;
 

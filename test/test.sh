@@ -5,7 +5,7 @@ trap "kill 0" SIGINT SIGTERM EXIT
 # start a master on 8000
 MASTERPORT=8000
 echo "STARTING MASTER ON $MASTERPORT"
-node master.js --port $MASTERPORT > test/testoutput/master.log &
+node node.js --name master --port $MASTERPORT > test/testoutput/master.log &
 sleep 1;
 
 # start a peer, Alice, on 8001
@@ -20,15 +20,15 @@ CARLOS=tcp://0.0.0.0:$CARLOSPORT
 
 # startthem
 echo "STARTING ALICE ON $ALICEPORT"
-node peer.js --port $ALICEPORT  --name alice  --masterport $MASTERPORT > test/testoutput/alice.log &
+node node.js --port $ALICEPORT  --name alice  --masterport $MASTERPORT > test/testoutput/alice.log &
 ALICEPID=$!
 
 echo "STARTING BOB ON $BOBPORT"
-node peer.js --port $BOBPORT    --name bob    --masterport $MASTERPORT > test/testoutput/bob.log &
+node node.js --port $BOBPORT    --name bob    --masterport $MASTERPORT > test/testoutput/bob.log &
 BOBPID=$!
 
 echo "STARTING CARLOS ON $CARLOSPORT"
-node peer.js --port $CARLOSPORT --name carlos --masterport $MASTERPORT > test/testoutput/carlos.log &
+node node.js --port $CARLOSPORT --name carlos --masterport $MASTERPORT > test/testoutput/carlos.log &
 CARLOSPID=$!
 
 sleep 1;
@@ -103,6 +103,7 @@ echo "Getting gameofthrones, 0 from bob, who should get it from CARLOS because A
   echo $OUTPUT;
   echo $SID2;
 
+echo "All done"
 
 # great.
 wait;

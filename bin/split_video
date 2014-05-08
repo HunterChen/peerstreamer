@@ -1,0 +1,108 @@
+#!/usr/bin/env python
+import sys
+import argparse
+import subprocess
+import os.path
+import os
+import json
+
+parser = argparse.ArgumentParser()
+
+parser.add_argument('-s', '--source', help='Video file to split', required=True)
+parser.add_argument('-d', '--destination', help="""\
+directory to place the directory containing the chunks.
+If a "manifest.json" file does not exist within it,
+one will be created""", required=True)
+parser.add_argument('-c', '--chunk-size', help="Number of bytes per chunk. Can use a 'm' or 'k' suffix", required=True)
+parser.add_argument('-f', '--filename', help="Optionally set the filename of the movie. Otherwise, will be name of source")
+
+def die(message):
+    sys.stderr.write(message + '\n')
+    sys.exit(1)
+
+args = parser.parse_args()
+
+if not os.path.isfile(args.source):
+    die("source %s is not a file" % args.source)
+
+if not os.path.isdir(args.destination):
+    die("destination %s is not a directory" % args.directory)
+
+
+if args.filename:
+    filename = args.filename
+else:
+    filename = os.path.basename(args.source)
+
+chunk_size_str = args.chunk_size
+if chunk_size_str.isdigit():
+    # Fine, just digits
+    chunk_size = int(chunk_size)
+elif chunk_size_str[:-1].isdigit():
+    # Ok, probably we used 'k' or 'm'
+    multiplier = int(chunk_size_str[:-1])
+    unit = chunk_size_str[-1]
+    if unit == 'k':
+        chunk_size = multiplier * 1024
+    elif unit == 'm':
+        chunk_size = multiplier * 1024 * 1024
+    else:
+        die("Unknown chunk size unit: %s" % unit)
+else:
+    die("Bad chunksize string: %s" % chunk_size_str)
+
+
+output_dir = os.path.join(args.destination, filename)
+if os.path.exists(output_dir):
+    die("output directory %s already exists!" % output_dir)
+os.mkdir(output_dir) # let this throw
+
+
+try:
+    source_handle = open(args.source, 'rb')
+except IOError as e:
+    die("Unable to open %s: %s" % (args.source, str(e)))
+
+print "Chunking %s into %s with chunk size %s" % (args.source, output_dir, chunk_size_str)
+chunk_number = 0
+while True:
+    print "Writing chunk %d.." % chunk_number
+    data = source_handle.read(chunk_size)
+    if data == "":
+        # We're done.
+        break
+
+    chunk_path = os.path.join(output_dir, "%d.chunk" % chunk_number)
+    try:
+        chunk_handle = open(chunk_path, 'wb')
+    except IOError as e:
+        die("Failed to open %s for writing" % chunk_filename)
+
+    chunk_handle.write(data)
+    chunk_handle.close()
+    chunk_number += 1
+
+# chunk number is how many chunks.
+total_chunks = chunk_number
+print "Done chunking, %d chunks total. Updating manifest.json" % total_chunks
+
+manifest_path = os.path.join(args.destination, 'manifest.json')
+if os.path.isfile(manifest_path):
+    with open(manifest_path) as f:
+        current_manifest = json.load(f)
+else:
+    current_manifest = {}
+
+current_manifest[filename] = total_chunks
+with open(manifest_path, 'w') as f:
+    json.dump(current_manifest, f)
+
+print "Done."
+
+
+
+
+
+
+
+

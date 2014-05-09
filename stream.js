@@ -8,6 +8,8 @@ var util = require('util')
 
 var BUFFER_SIZE_IN_CHUNKS = 10 // buffer size in chunks. good comment bro.
   , GETTIMEOUT = 3 // seconds we wait to connect a client
+  , QUERYTIMEOUT = 1
+  , RETRY_WAITTIME = 100
   ;
 
 var Stream = module.exports.Stream = function (filename, initialChunk, chunkStore, thisNode) {
@@ -124,8 +126,15 @@ Stream.prototype.advanceCursorFromSource = function (callback) {
 
 Stream.prototype.advanceCursorFromNullSource = function (callback) {
   // Then I need to find one.
-  this.thisNode.master.getClient().invoke('query', this.filename, this.chunkCursor, function (err, serializedPossiblePeers) {
+  this.thisNode.master.getClient({
+    timeout : QUERYTIMEOUT
+  }).invoke('query', this.filename, this.chunkCursor, function (err, serializedPossiblePeers) {
     // Convert the raw {name: 'name', address: 'address'} peer list into a list of Servers
+
+    if (err) {
+      this.emit('masterTimedout');
+      return setTimeout(this.advanceCursor(callback), RETRY_WAITTIME);
+    }
     var possiblePeers = []
       , peerString = ':'
       ;
@@ -153,7 +162,14 @@ Stream.prototype.advanceCursorFromNullSource = function (callback) {
         // TODO handle error
         this.setSource(this.thisNode.master);
         this._chunkSourceIsMaster = true;
-        this.advanceCursorFromSource(callback);
+        this.advanceCursorFromSource(function(err, advanced){
+          if (err) {
+            this.emit('masterTimedout');
+            return setTimeout(this.advanceCursor(callback), RETRY_WAITTIME);
+          } else { // assume always advance?
+            callback(err, advanced);
+          }
+        }.bind(this));
       }
     }.bind(this));
   }.bind(this));

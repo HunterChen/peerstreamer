@@ -4,14 +4,17 @@
 Holds a bunch of streams
 */
 
-var Stream = require('./stream').Stream;
+var Stream = require('./stream').Stream
+  , util = require('util')
+  , events = require('events')
+  ;
 
 var StreamManager = module.exports.StreamManager = function (chunkStore, thisNode) {
   this.streams = {};
   this.chunkStore = chunkStore;
   this.thisNode = thisNode;
 };
-
+util.inherits(StreamManager, events.EventEmitter);
 
 // Returns a Stream.
 // streamId can be left out, in which case a NEW STREAM
@@ -23,6 +26,10 @@ StreamManager.prototype.get = function (filename, chunk, streamId) {
   if (typeof(streamId) === 'undefined' || streamId === null) {
     // Make a new one.
     var newStream = new Stream(filename, chunk, this.chunkStore, this.thisNode);
+    newStream.on('masterTimedout', function() {
+      this.emit('masterTimedout');
+    }.bind(this));
+    
     newStream.fillBuffer();
     this.streams[newStream.id] = newStream;
     return newStream;

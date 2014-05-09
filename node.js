@@ -11,6 +11,7 @@ var zerorpc = require('zerorpc')
   , VideoDatabase = require('./video_database').VideoDatabase
   ;
 
+var RETRY_MASTER_INTERVAL = 100;
 
 var Node = module.exports.Node = function (options) {
   this.port = options.port;
@@ -23,13 +24,27 @@ var Node = module.exports.Node = function (options) {
   this.ChunkDirectory = new ChunkDirectory();
   this.chunkStore = new ChunkStore();
 
+  this.hasSuperMaster = false;
+  this.isOnSuper = false;
   if (options.masterport) {
     this.master = new Server('tcp://0.0.0.0:' + options.masterport, 'master');
-    this.reporter = new Reporter(this.chunkStore, this.master, this);
+    this.backup = this.master; // so we d on't llose the reference to master.
+    this.reporter = new Reporter(this, this.chunkStore, this.master, this);
     this.registerWithMaster();
 
     this.streamManager = new StreamManager(this.chunkStore, this);
+    this.streamManager.on('masterTimedout', this.handleMasterFailure.bind(this));
+
     this.hasMaster = true;
+    //check for higher master
+    //right now passing in a backup master. 
+    //ideally each node would know whole network topology
+    if (options.supermasterport) {
+      this.hasSuperMaster = true;
+      this.superMaster = new Server('tcp://0.0.0.0:' + options.supermasterport, 'supermaster'); 
+    }
+
+
   } else {
     this.hasMaster = false;
     if (options.videodatabase) {
@@ -49,6 +64,7 @@ var Node = module.exports.Node = function (options) {
     this.ChunkDirectory.removeServer(c.name);
   }.bind(this));
 
+  setInterval(this.attemptContactMaster.bind(this), RETRY_MASTER_INTERVAL);
 };
 
 Node.prototype.start = function () {
@@ -63,6 +79,26 @@ Node.prototype.registerWithMaster = function() {
   });
 };
 
+Node.prototype.handleMasterFailure = function() {
+  if (this.hasSuperMaster) {
+    this.master = this.superMaster;
+    this.isOnSuper = true;
+  }
+};
+
+Node.prototype.attemptContactMaster = function() {
+  if (this.isOnSuper) {
+    this.master = this.backup;
+    this.isOnSuper = false;
+    console.log('attempting to re-register', this.master.address);
+    this.master.getClient().invoke('register', this.name, this.address, function (err, response) {
+      if (err) {
+        this.master = this.superMaster;
+        this.isOnSuper = true;
+      }
+    }.bind(this));    
+  }
+};
 
 Node.prototype._setupRpcServer = function () {
   this._server = new zerorpc.Server({
@@ -161,12 +197,14 @@ if (require.main === module) {
   var argv = require('optimist')
     .demand(['port', 'name'])
     .describe('masterport', 'optionally specify master')
+    .describe('supermasterport', 'optionally specify your masters master')
     .describe('videodatabase', 'specificy directory to use as video database for masterless nodes')
     .argv
     , n = new Node({
       name: argv.name
     , port: argv.port
     , masterport: argv.masterport
+    , supermasterport: argv.supermasterport
     , videodatabase: argv.videodatabase
     })
     ;

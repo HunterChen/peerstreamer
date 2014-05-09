@@ -11,7 +11,9 @@ var zerorpc = require('zerorpc')
   , VideoDatabase = require('./video_database').VideoDatabase
   ;
 
-var RETRY_MASTER_INTERVAL = 100;
+var RETRY_MASTER_INTERVAL = 100
+  , CHUNK_STORE_CAPACITY = 50
+  ;
 
 var Node = module.exports.Node = function (options) {
   this.port = options.port;
@@ -22,7 +24,7 @@ var Node = module.exports.Node = function (options) {
 
   this.childTracker = new ChildTracker();
   this.ChunkDirectory = new ChunkDirectory();
-  this.chunkStore = new ChunkStore();
+  this.chunkStore = new ChunkStore(CHUNK_STORE_CAPACITY);
 
   this.hasSuperMaster = false;
   this.isOnSuper = false;
@@ -49,7 +51,7 @@ var Node = module.exports.Node = function (options) {
     this.hasMaster = false;
     if (options.videodatabase) {
       // create one.
-      this.videoDatabase = new VideoDatabase(options.videodatabase)
+      this.videoDatabase = new VideoDatabase(options.videodatabase);
     } else {
       this.videoDatabase = null;
     }
@@ -115,7 +117,7 @@ Node.prototype.handleGet = function (filename, chunk, fromChild, streamId, reply
     console.log('Serving get for', filename, chunk);
     if (this.videoDatabase) {
       return this.videoDatabase.get(filename, chunk, function (err, data) {
-        reply(err, {data:data, streamId: null})
+        reply(err, {data:data, streamId: null});
       });
     } else {
       var data = filename + ':' + chunk;

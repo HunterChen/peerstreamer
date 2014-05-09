@@ -137,6 +137,10 @@ Node.prototype.handleRegister = function (peername, peeraddress, reply) {
   var s = new Server(peeraddress, peername)
     , added = this.childTracker.add(s)
     ;
+  if (! added) { // then we already had this child.. flap!
+    this.ChunkDirectory.removeServer(peername);
+    console.log('Child flapped');
+  }
   console.log('Added child? ', added);
   reply(null, 'ok');
 };

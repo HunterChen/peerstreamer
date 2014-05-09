@@ -26,7 +26,7 @@ var VideoDatabase = module.exports.VideoDatabase = function (directory) {
 };
 
 VideoDatabase.prototype._loadManifest = function () {
-  var manifestPath = path.join(this.directory, 'manifest.json');
+  var manifestPath = './' + path.join(this.directory, 'manifest.json');
   this.manifest = require(manifestPath)
 };
 

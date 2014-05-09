@@ -2,7 +2,7 @@
 
 /* This is how data gets out of the system */
 
-var child_process = require('child_process')
+var childProcess = require('child_process')
   , zerorpc = require('zerorpc')
   ;
 
@@ -23,14 +23,14 @@ var VideoStreamer = function (getInterval, source, filename) {
 
 VideoStreamer.prototype.start = function () {
   this._spawnVlc();
-  this._writeOne()
+  this._writeOne();
 };
 
 VideoStreamer.prototype._spawnVlc = function (ready) {
   // Hard code this jank
   var vlcPath = process.platform === 'darwin' ? '/Applications/VLC.app/Contents/MacOS/VLC' : 'vlc';
   //vlcPath = 'cat';
-  this.vlc = child_process.spawn(vlcPath, ['-'], {
+  this.vlc = childProcess.spawn(vlcPath, ['-'], {
     stdio: ['pipe', 1, 2]
   });
   process.on('SIGINT', this._shutdown.bind(this));
@@ -50,7 +50,7 @@ VideoStreamer.prototype._writeOne = function () {
       // EOF.
       //this.vlc.wait();
     } else {
-      console.log("Got chunk", this.chunk, data.data.substring(0,100));
+      console.log('Got chunk', this.chunk, data.data.substring(0,100));
       this.vlc.stdin.write(new Buffer(data.data, 'base64'));
       this.streamId = data.streamId;
       this.chunk++;
@@ -64,4 +64,4 @@ if (require.main === module) {
     , vs = new VideoStreamer(argv.interval, argv.source, argv.filename)
     ;
   vs.start();
-};
+}

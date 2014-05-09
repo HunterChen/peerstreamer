@@ -27,7 +27,7 @@ var VideoDatabase = module.exports.VideoDatabase = function (directory) {
 
 VideoDatabase.prototype._loadManifest = function () {
   var manifestPath = './' + path.join(this.directory, 'manifest.json');
-  this.manifest = require(manifestPath)
+  this.manifest = require(manifestPath);
 };
 
 VideoDatabase.prototype.get = function (filename, chunk, callback) {
@@ -42,9 +42,9 @@ VideoDatabase.prototype.get = function (filename, chunk, callback) {
   }
 
   // Serve it.
-  var filename = path.join(this.directory, filename, chunk + '.chunk');
+  var chunkPath = path.join(this.directory, filename, chunk + '.chunk');
 
-  fs.readFile(filename, function (err, data) {
+  fs.readFile(chunkPath, function (err, data) {
     if (err) {
       return callback(err);
     } else {

@@ -34,7 +34,7 @@ var Node = module.exports.Node = function (options) {
     this.hasMaster = false;
     if (options.videodatabase) {
       // create one.
-      this.videoDatabase = new VideoDatabase(options.videodatabase)
+      this.videoDatabase = new VideoDatabase(options.videodatabase);
     } else {
       this.videoDatabase = null;
     }
@@ -79,7 +79,7 @@ Node.prototype.handleGet = function (filename, chunk, fromChild, streamId, reply
     console.log('Serving get for', filename, chunk);
     if (this.videoDatabase) {
       return this.videoDatabase.get(filename, chunk, function (err, data) {
-        reply(err, {data:data, streamId: null})
+        reply(err, {data:data, streamId: null});
       });
     } else {
       var data = filename + ':' + chunk;

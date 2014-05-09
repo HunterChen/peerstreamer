@@ -70,9 +70,12 @@ Stream.prototype._getChunkFromSource = function (source, filename, chunk, isMast
 Stream.prototype.advanceCursor = function (callback) {
   // Get next chunk, from some server.
   /// Will callback with (err Err, advanced bool)
-  if (this.chunkStore.get(this.filename, this.chunkCursor) !== null) {
-    // Great. Chunk store has it already. Move.
+  if (this.chunkStore.has(this.filename, this.chunkCursor)) {
+    // Great. Chunk store has it already
+    // Then Lock it.
+    this.chunkStore.lock(this.filename, this.chunkCursor);
     console.log('Stream', this.id, 'advanced chunk from chunkStore');
+    // Then move.
     this.advanceChunkCursor();
     return setImmediate(function () {
       callback(null, true);
@@ -258,9 +261,9 @@ Stream.prototype.checkWaitingCallbacks = function () {
 };
 
 Stream.prototype.advancePosition = function () {
+  this.chunkStore.free(this.filename, this.position);
   this.position++;
   this.fillBuffer();
-  // TODO free that chunk (let the chunkStore eliminate it?)
   this.emit('positionAdvanced');
 };
 

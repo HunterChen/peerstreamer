@@ -11,6 +11,7 @@ var zerorpc = require('zerorpc')
   , VideoDatabase = require('./video_database').VideoDatabase
   ;
 
+var CHUNK_STORE_CAPACITY = 50;
 
 var Node = module.exports.Node = function (options) {
   this.port = options.port;
@@ -21,7 +22,7 @@ var Node = module.exports.Node = function (options) {
 
   this.childTracker = new ChildTracker();
   this.ChunkDirectory = new ChunkDirectory();
-  this.chunkStore = new ChunkStore();
+  this.chunkStore = new ChunkStore(CHUNK_STORE_CAPACITY);
 
   if (options.masterport) {
     this.master = new Server('tcp://0.0.0.0:' + options.masterport, 'master');

@@ -73,7 +73,6 @@ ChunkStore.prototype.add = function (filename, chunk, data) {
       , entry = new StoreEntry(filename, chunk, node)
       ;
 
-    console.log("ADD START", this.lruListToString());
     if (this.mru === null) {
       // Then this.lru is null as well...
       this.mru = this.lru = node;
@@ -85,7 +84,6 @@ ChunkStore.prototype.add = function (filename, chunk, data) {
     this.chunks[fc] = entry;
     this._chunkData[fc] = data;
     this.count++;
-    console.log("ADD END", this.lruListToString());
   }
 
   // TODO should we still do this if we just touched?
@@ -157,7 +155,6 @@ ChunkStore.prototype.trim = function () {
 };
 
 ChunkStore.prototype.free = function (filename, chunk) {
-  console.log('Freeing ', filename, chunk);
   if (!this.has(filename, chunk)) {
     throw new Error('Attempting to free what we dont have! ' + filename + ':' + chunk);
   }
@@ -185,7 +182,6 @@ ChunkStore.prototype.has = function (filename, chunk) {
 };
 
 ChunkStore.prototype.touch = function (filename, chunk) {
-  console.log('Touching ', filename, chunk);
   if (!this.has(filename, chunk)) {
     throw new Error('Tried to touch a chunk we don\'t have');
   }
@@ -196,7 +192,6 @@ ChunkStore.prototype.touch = function (filename, chunk) {
   entry.touch();
   // Ok, now let's update the linked list.
   // We need to move this element to the head.
-  console.log("TOUCH START", this.lruListToString());
   var node = entry.llNode
     , next = node.next
     , previous = node.previous
@@ -211,9 +206,6 @@ ChunkStore.prototype.touch = function (filename, chunk) {
       this.lru = previous;
       previous.next = null;
     } else {
-      if (previous === null) {
-        console.log("NULL");
-      }
       previous.next = next;
       next.previous = previous;
     }
@@ -222,7 +214,6 @@ ChunkStore.prototype.touch = function (filename, chunk) {
     this.mru.previous = node;
     this.mru = node;
   }
-  console.log("TOUCH START", this.lruListToString());
 
 };
 
@@ -241,7 +232,6 @@ ChunkStore.prototype.lruListToString = function () {
     if (node.next) {
       out += ' <-> ' + node.next.value;
       if (node.next.previous !== node) {
-        console.log("P:", out);
         throw new Error('fuck fuck invariant busted');
       }
     }

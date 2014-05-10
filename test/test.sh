@@ -17,18 +17,30 @@ ALICE=tcp://0.0.0.0:$ALICEPORT
 BOB=tcp://0.0.0.0:$BOBPORT
 CARLOS=tcp://0.0.0.0:$CARLOSPORT
 
+# clear alice bob and carlos cache directories
+ALICECHUNKS=test/chunks/alicechunks
+BOBCHUNKS=test/chunks/bobchunks
+CARLOSCHUNKS=test/chunks/carloschunks
+
+rm -rf $ALICECHUNKS
+rm -rf $BOBCHUNKS
+rm -rf $CARLOSCHUNKS
+
+mkdir $ALICECHUNKS
+mkdir $BOBCHUNKS
+mkdir $CARLOSCHUNKS
 
 # startthem
 echo "STARTING ALICE ON $ALICEPORT"
-node node.js --port $ALICEPORT  --name alice  --masterport $MASTERPORT > test/testoutput/alice.log &
+node node.js --port $ALICEPORT  --name alice  --masterport $MASTERPORT --chunkdirectory $ALICECHUNKS  > test/testoutput/alice.log &
 ALICEPID=$!
 
 echo "STARTING BOB ON $BOBPORT"
-node node.js --port $BOBPORT    --name bob    --masterport $MASTERPORT > test/testoutput/bob.log &
+node node.js --port $BOBPORT    --name bob    --masterport $MASTERPORT --chunkdirectory $BOBCHUNKS    > test/testoutput/bob.log &
 BOBPID=$!
 
 echo "STARTING CARLOS ON $CARLOSPORT"
-node node.js --port $CARLOSPORT --name carlos --masterport $MASTERPORT > test/testoutput/carlos.log &
+node node.js --port $CARLOSPORT --name carlos --masterport $MASTERPORT --chunkdirectory $CARLOSCHUNKS > test/testoutput/carlos.log &
 CARLOSPID=$!
 
 sleep 1;

@@ -24,11 +24,11 @@ var Node = module.exports.Node = function (options) {
 
   this.childTracker = new ChildTracker();
   this.ChunkDirectory = new ChunkDirectory();
-  this.chunkStore = new ChunkStore(CHUNK_STORE_CAPACITY);
 
   this.hasSuperMaster = false;
   this.isOnSuper = false;
   if (options.masterport) {
+    this.chunkStore = new ChunkStore(CHUNK_STORE_CAPACITY, options.chunkdirectory);
     this.master = new Server('tcp://0.0.0.0:' + options.masterport, 'master');
     this.backup = this.master; // so we d on't llose the reference to master.
     this.reporter = new Reporter(this, this.chunkStore, this.master, this);
@@ -201,6 +201,7 @@ if (require.main === module) {
     .describe('masterport', 'optionally specify master')
     .describe('supermasterport', 'optionally specify your masters master')
     .describe('videodatabase', 'specificy directory to use as video database for masterless nodes')
+    .describe('chunkdirectory', 'where do i keep my chunk cache?')
     .argv
     , n = new Node({
       name: argv.name
@@ -208,6 +209,7 @@ if (require.main === module) {
     , masterport: argv.masterport
     , supermasterport: argv.supermasterport
     , videodatabase: argv.videodatabase
+    , chunkdirectory: argv.chunkdirectory
     })
     ;
 

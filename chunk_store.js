@@ -76,6 +76,8 @@ var ChunkStore = module.exports.ChunkStore = function (capacity, directory) {
 
   this.lru = null; // linked list nodes
   this.mru = null; // linked list nodes
+
+  setInterval(this.sync.bind(this), 500); // too fast.
 };
 util.inherits(ChunkStore, events.EventEmitter);
 
@@ -436,7 +438,7 @@ ChunkStore.prototype._writeOutDatastructure = function () {
     if (this.chunks.hasOwnProperty(fc)) {
       entry = this.chunks[fc];
       if (entry.persisted && !entry.deleted) {
-        outObj[entry.chunkPath] = {
+        outObj[path.basename(entry.chunkPath)] = {
           filename: entry.filename
         , chunk: entry.chunk
         , lastUsed: entry.lastUsed

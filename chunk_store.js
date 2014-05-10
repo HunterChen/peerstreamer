@@ -16,6 +16,12 @@ var events = require('events')
   , util = require('util')
   ;
 
+// location enum
+var LOCATION_CACHE = 0 //'inside the inner cache'
+  , LOCATION_PENDING = 1 //'removed from inner cache, write pending'
+  , LOCATION_DISK = 2 //'inside the disk'
+  ;
+
 /* Utility */
 var LinkedListNode = function (next, previous, value) {
   this.next = next;
@@ -165,6 +171,16 @@ ChunkStore.prototype.free = function (filename, chunk) {
   this.trim();
 };
 
+ChunkStore.prototype.lock = function (filename, chunk) {
+  if (!this.has(filename, chunk)) {
+    throw new Error('Attempting to lock what we dont have! ' + filename + ':' + chunk);
+  }
+  var fc = this._getKey(filename, chunk)
+    , entry = this.chunks[fc]
+    ;
+  entry.lock();
+};
+
 ChunkStore.prototype.get = function(filename, chunk) {
   var fc = this._getKey(filename, chunk);
   if (this.has(filename, chunk)) {
@@ -243,6 +259,31 @@ ChunkStore.prototype.lruListToString = function () {
   return out;
 };
 
+/*
+Idea:
+ keep track whether each chunk is 'persisted'
+ on put,
+    shove it into the in-memory cache
+    start writing it to disk (mark it as writepending)
+    once its written,
+      mark it as persisted
+      if it is present in the `pending` dictionary, remove it.
+ on eviction from the in-memory cache,
+    if its writepending, put it in the pending dictionary,
+      it will be removed when the write finishes.
+    otherwise, if it is persisted, just the location change.
+
+ on get,
+    check where it is (CACHE, PENDING, DISK), get it,
+    and put it in the cache, updating position accordingly
+
+ on delete,
+    remove from datastructure and put in delete queue
+
+ on sync,
+    first write out our data structure, for all entries `persisted`.
+    the, delete what is in our delete queue.
+*/
 if (require.main === module) {
   var cs = new ChunkStore(20);
   cs.on('addedData', function (s) {

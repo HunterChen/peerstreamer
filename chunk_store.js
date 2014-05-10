@@ -14,12 +14,16 @@
 
 var events = require('events')
   , util = require('util')
+  , fs = require('fs')
+  , path = require('path')
+  , LRU = require('lru-cache')
   ;
 
 // location enum
 var LOCATION_CACHE = 0 //'inside the inner cache'
   , LOCATION_PENDING = 1 //'removed from inner cache, write pending'
   , LOCATION_DISK = 2 //'inside the disk'
+  , LOCATION_NONE = -1
   ;
 
 /* Utility */
@@ -35,6 +39,11 @@ var StoreEntry = function (filename, chunk, llNode) {
   this.chunk = chunk;
   this.llNode = llNode;
   this.lastUsed = (new Date()).valueOf();
+
+  this.persisted = false;
+  this.deleted = false;
+  this.chunkPath = null;
+  this.location = LOCATION_NONE;
 };
 
 StoreEntry.prototype.touch = function () {
@@ -49,15 +58,21 @@ StoreEntry.prototype.lock = function () {
   this.llNode.locked = true;
 };
 
-var ChunkStore = module.exports.ChunkStore = function (capacity) {
+var ChunkStore = module.exports.ChunkStore = function (capacity, directory) {
 
   this.chunks = {};
   this.count = 0;
   this.capacity = capacity;
+  this.hotCacheSize = 5;
+  this.directory = directory;
 
-  // For now, this acts as the data store
-  // TODO persist to disk with cacheing layer.
-  this._chunkData = {};
+  this.hotCache = LRU({
+    max: this.hotCacheSize
+  , dispose: this.handleHotCacheEvict.bind(this)
+  }); 
+  this.pendingWriteChunks = {}; // pending store.
+  this.sequenceNumber = 0; // for uniqueness on file writes
+  this.pendingDeletes = [];
 
   this.lru = null; // linked list nodes
   this.mru = null; // linked list nodes
@@ -68,7 +83,22 @@ ChunkStore.prototype._getKey = function (filename, chunk) {
   return filename + ':' + chunk;
 };
 
+ChunkStore.prototype._generateChunkPath = function (filename, chunk) {
+  var chunkPath = filename + ':' + chunk + ':' + this.sequenceNumber + '.chunk';
+  this.sequenceNumber++;
+  return path.join(this.directory, chunkPath);
+};
+
 ChunkStore.prototype.add = function (filename, chunk, data) {
+  /*
+  on put,
+     shove it into the in-memory cache
+     start writing it to disk
+     once its written,
+       mark it as persisted
+       if it is present in the `pending` dictionary, remove it
+        and update that items location
+  */
   if (this.has(filename, chunk)) {
     // Because chunks immutable, we can just touch it.
     this.touch(filename, chunk);
@@ -87,8 +117,33 @@ ChunkStore.prototype.add = function (filename, chunk, data) {
       this.mru.previous = node;
       this.mru = node;
     }
+
+    this.hotCache.set(fc, data);
+    entry.location = LOCATION_CACHE;
     this.chunks[fc] = entry;
-    this._chunkData[fc] = data;
+
+    this.writeChunk(filename, chunk, data, function (err, chunkPath) {
+      // Ok, now we can persist it.
+      if (err) {
+        // TODO what do we do?
+        // explode for now...
+        throw err;
+      }
+      entry.chunkPath = chunkPath;
+      entry.persisted = true;
+      // Check if it is in the pendingWriteChunks, delete if so,
+      // and flip its location to disk
+      if (this.pendingWriteChunks.hasOwnProperty(fc)) {
+        // That means that the location is LOCATION_PENDING
+        // by deleting it, we set location to LOCATION_DISK
+        // assertion
+        if (entry.location !== LOCATION_PENDING) {
+          throw new Error('Found ' + fc + ' in pendingWriteChunks, but its location is' + entry.location);
+        }
+        delete this.pendingWriteChunks[fc];
+        entry.location = LOCATION_DISK;
+      }
+    }.bind(this));
     this.count++;
   }
 
@@ -153,8 +208,29 @@ ChunkStore.prototype.trim = function () {
       }
     }
 
-    delete this.chunks[fc];
-    delete this._chunkData[fc];
+    /*
+    on delete,
+       remove from datastructure and put in delete queue
+    */
+    entry.deleted = true;
+    if (entry.location === LOCATION_PENDING) {
+      // Then on write, location will be set to disk,
+      // and it will be cleared from the pending dictionary
+      // for us.
+      delete this.chunks[fc];
+      this.pendingDeletes.push(entry);
+    } else if (entry.location === LOCATION_CACHE) {
+      // We can't delete it from this.chunks, yet,
+      // because then handleHotCacheEvict won't be able
+      // to find it. But delete it from the cache,
+      // and let handleHotCacheEvict take care of cleaning up
+      this.hotCache.del(fc);
+    } else if (entry.location === LOCATION_DISK) {
+      // Schedule the deletion
+      delete this.chunks[fc];
+      this.pendingDeletes.push(entry);
+    }
+
     this.count--;
     this.emit('deletedData', {'filename':entry.filename,'chunk':entry.chunk,'data':null});
   }
@@ -182,9 +258,41 @@ ChunkStore.prototype.lock = function (filename, chunk) {
 };
 
 ChunkStore.prototype.get = function(filename, chunk) {
-  var fc = this._getKey(filename, chunk);
+  /*
+  on get,
+     check where it is (CACHE, PENDING, DISK), get it,
+     and put it in the cache, updating position accordingly
+     if it is on DISK, read it,
+        put it in cache, and set location to CACHE
+     if it is in CACHE, get it.
+     if it is in PENDING, get it,
+        __delete it from pending__
+        put it in cache, and set location to CACHE.
+  */
   if (this.has(filename, chunk)) {
-    var data = this._chunkData[fc];
+    var fc = this._getKey(filename, chunk)
+      , entry = this.chunks[fc]
+      , data
+      ;
+
+    // could use switch / case, but fine.
+    if (entry.location === LOCATION_CACHE) {
+      data = this.hotCache.get(fc);
+    } else if (entry.location === LOCATION_DISK) {
+      data = this.readChunk(entry.chunkPath);
+      this.hotCache.set(fc, data);
+      entry.location = LOCATION_CACHE;
+    } else if (entry.location === LOCATION_PENDING) {
+      data = this.pendingWriteChunks[fc];
+      delete this.pendingWriteChunks[fc];
+      this.hotCache.set(fc, data);
+      entry.location = LOCATION_CACHE;
+    } else {
+      throw new Error('Get for chunk with no location!' + fc);
+    }
+    if (!data) {
+      throw new Error('Had chunk, but could not find data!' + fc);
+    }
     this.touch(filename, chunk);
     return data;
   } else {
@@ -259,33 +367,103 @@ ChunkStore.prototype.lruListToString = function () {
   return out;
 };
 
-/*
-Idea:
- keep track whether each chunk is 'persisted'
- on put,
-    shove it into the in-memory cache
-    start writing it to disk (mark it as writepending)
-    once its written,
-      mark it as persisted
-      if it is present in the `pending` dictionary, remove it.
- on eviction from the in-memory cache,
-    if its writepending, put it in the pending dictionary,
-      it will be removed when the write finishes.
-    otherwise, if it is persisted, just the location change.
+ChunkStore.prototype.handleHotCacheEvict = function (fc, data) {
+  /*
+   on eviction from the in-memory cache,
+     if it is not persisted, put it in the pending dictionary,
+       set LOCATION_PENDING
+       it will be removed when the write finishes,
+     otherwise, if it is persisted, set LOCATION_DISK.
+  */
+  if (!this.chunks.hasOwnProperty(fc)) {
+    throw new Error('Element ' + fc + ' evicted from the cache, but were not tracking it!');
+  }
+  var entry = this.chunks[fc];
+  if (entry.deleted) {
+    // Well, we need to clean up then
+    delete this.chunks[fc];
+    this.pendingDeletes.push(entry);
+  } else if (entry.persisted) {
+    // Great.
+    entry.location = LOCATION_DISK;
+  } else {
+    // Well, this means that it is currently being written to disk.
+    // but it's been evicted from the cache! uh oh. store it in pendingWriteChunks
+    // and set location to pending
+    this.pendingWriteChunks[fc] = data;
+    entry.location = LOCATION_PENDING;
+  }
+};
 
- on get,
-    check where it is (CACHE, PENDING, DISK), get it,
-    and put it in the cache, updating position accordingly
+ChunkStore.prototype.writeChunk = function (filename, chunk, data, callback) {
+  // Callback gets called with (err, filename);
+  var chunkPath = this._generateChunkPath(filename, chunk);
+  fs.writeFile(chunkPath, data, function (err) {
+    return callback(err, chunkPath);
+  });
+};
 
- on delete,
-    remove from datastructure and put in delete queue
+ChunkStore.prototype.readChunk = function (chunkPath) {
+  // TODO this needs to be async
+  return fs.readFileSync(chunkPath, {encoding:'ascii'});
+};
 
- on sync,
-    first write out our data structure, for all entries `persisted`.
-    the, delete what is in our delete queue.
-*/
+
+ChunkStore.prototype.sync = function () {
+  /*
+   on sync,
+      first write out our data structure, for all entries `persisted`.
+      the, delete what is in our delete queue.
+  */
+  var myPendingDeletes = this.pendingDeletes;
+  this.pendingDeletes = []; // not a clear, because we want outs to be OK
+  // I now have responsibility for deleting these files or,
+  // if they are not yet peresiste, putting that off to the next sync.
+
+  // First write out our datastructure.
+  // TODO (this should be mutexed?)
+  // TODO this should be async?
+  this._writeOutDatastructure();
+  this._doDeletes(myPendingDeletes);
+};
+
+ChunkStore.prototype._writeOutDatastructure = function () { 
+  var outObj = {}
+    , fc
+    , entry
+    ;
+  for (fc in this.chunks) {
+    if (this.chunks.hasOwnProperty(fc)) {
+      entry = this.chunks[fc];
+      if (entry.persisted && !entry.deleted) {
+        outObj[entry.chunkPath] = {
+          filename: entry.filename
+        , chunk: entry.chunk
+        , lastUsed: entry.lastUsed
+        };
+      }
+    }
+  }
+  // TODO async
+  var manifestPath = path.join(this.directory, 'manifest.json');
+  fs.writeFileSync(manifestPath, JSON.stringify(outObj));
+};
+
+ChunkStore.prototype._doDeletes = function (entries) {
+  // TODO: make this async
+  entries.forEach(function (entry) {
+    if (!entry.persisted) {
+      // There is still a write ongoing for this.
+      // so just put it back
+      this.pendingDeletes.push(entry);
+    } else {
+      fs.unlinkSync(entry.chunkPath);
+    }
+  }.bind(this));
+};
+
 if (require.main === module) {
-  var cs = new ChunkStore(20);
+  var cs = new ChunkStore(20, 'chunkstoredev');
   cs.on('addedData', function (s) {
     console.log('added', s.filename, s.chunk, s.data);
   });
@@ -322,10 +500,10 @@ if (require.main === module) {
     }
   }
   console.log(cs.lruListToString());
-
-
+  setTimeout(cs.sync.bind(cs),100);
+  
   console.log('\nNow checking out touch...');
-  cs = new ChunkStore(20);
+  cs = new ChunkStore(20, 'chunkstoredev');
   for (i=0; i<10;i++) {
     cs.add(f,i, 'd' + i);
   }

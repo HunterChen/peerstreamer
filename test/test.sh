@@ -4,6 +4,7 @@ trap "kill 0" SIGINT SIGTERM EXIT
 
 # start a master on 8000
 MASTERPORT=8000
+MASTER=tcp://0.0.0.0:$MASTERPORT
 echo "STARTING MASTER ON $MASTERPORT"
 node node.js --name master --port $MASTERPORT > test/testoutput/master.log &
 sleep 1;
@@ -32,15 +33,15 @@ mkdir $CARLOSCHUNKS
 
 # startthem
 echo "STARTING ALICE ON $ALICEPORT"
-node node.js --port $ALICEPORT  --name alice  --masterport $MASTERPORT --chunkdirectory $ALICECHUNKS  > test/testoutput/alice.log &
+node node.js --port $ALICEPORT  --name alice  --master $MASTER --chunkdirectory $ALICECHUNKS  > test/testoutput/alice.log &
 ALICEPID=$!
 
 echo "STARTING BOB ON $BOBPORT"
-node node.js --port $BOBPORT    --name bob    --masterport $MASTERPORT --chunkdirectory $BOBCHUNKS    > test/testoutput/bob.log &
+node node.js --port $BOBPORT    --name bob    --master $MASTER --chunkdirectory $BOBCHUNKS    > test/testoutput/bob.log &
 BOBPID=$!
 
 echo "STARTING CARLOS ON $CARLOSPORT"
-node node.js --port $CARLOSPORT --name carlos --masterport $MASTERPORT --chunkdirectory $CARLOSCHUNKS > test/testoutput/carlos.log &
+node node.js --port $CARLOSPORT --name carlos --master $MASTER --chunkdirectory $CARLOSCHUNKS > test/testoutput/carlos.log &
 CARLOSPID=$!
 
 sleep 1;

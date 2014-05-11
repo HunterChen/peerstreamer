@@ -28,9 +28,9 @@ var Node = module.exports.Node = function (options) {
 
   this.hasSuperMaster = false;
   this.isOnSuper = false;
-  if (options.masterport) {
+  if (options.master) {
     this.chunkStore = new ChunkStore(CHUNK_STORE_CAPACITY, options.chunkdirectory);
-    this.master = new Server('tcp://0.0.0.0:' + options.masterport, 'master');
+    this.master = new Server(options.master, 'master');
     this.backup = this.master; // so we d on't llose the reference to master.
     this.reporter = new Reporter(this, this.chunkStore, this.master, this);
     this.registerWithMaster(this.chunkStore.getAllChunks());
@@ -42,9 +42,9 @@ var Node = module.exports.Node = function (options) {
     //check for higher master
     //right now passing in a backup master. 
     //ideally each node would know whole network topology
-    if (options.supermasterport) {
+    if (options.supermaster) {
       this.hasSuperMaster = true;
-      this.superMaster = new Server('tcp://0.0.0.0:' + options.supermasterport, 'supermaster'); 
+      this.superMaster = new Server(options.supermaster, 'supermaster'); 
     }
 
 
@@ -232,16 +232,16 @@ Node.prototype.handleQuery = function (filename, chunk, reply) {
 if (require.main === module) {
   var argv = require('optimist')
     .demand(['port', 'name'])
-    .describe('masterport', 'optionally specify master')
-    .describe('supermasterport', 'optionally specify your masters master')
+    .describe('master', 'optionally specify master')
+    .describe('supermaster', 'optionally specify your masters master')
     .describe('videodatabase', 'specificy directory to use as video database for masterless nodes')
     .describe('chunkdirectory', 'where do i keep my chunk cache?')
     .argv
     , n = new Node({
       name: argv.name
     , port: argv.port
-    , masterport: argv.masterport
-    , supermasterport: argv.supermasterport
+    , master: argv.master
+    , supermaster: argv.supermaster
     , videodatabase: argv.videodatabase
     , chunkdirectory: argv.chunkdirectory
     })

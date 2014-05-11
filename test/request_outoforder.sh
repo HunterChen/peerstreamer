@@ -3,6 +3,7 @@ trap "kill 0" SIGINT SIGTERM EXIT
 
 # start a master on 8000
 MASTERPORT=8000
+MASTER=tcp://0.0.0.0:$MASTERPORT
 echo "STARTING MASTER ON $MASTERPORT"
 node master.js --port $MASTERPORT > testoutput/master.log &
 sleep 1;
@@ -15,7 +16,7 @@ ALICE=tcp://0.0.0.0:$ALICEPORT
 
 # startthem
 echo "STARTING ALICE ON $ALICEPORT"
-node peer.js --port $ALICEPORT  --name alice  --masterport $MASTERPORT > testoutput/alice.log &
+node peer.js --port $ALICEPORT  --name alice  --master $MASTER > testoutput/alice.log &
 ALICEPID=$!
 
 sleep 1;

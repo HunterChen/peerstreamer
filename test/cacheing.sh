@@ -14,14 +14,23 @@ BOBPORT=8002
 ALICE=tcp://0.0.0.0:$ALICEPORT
 BOB=tcp://0.0.0.0:$BOBPORT
 
+ALICECHUNKS=test/chunks/alicechunks
+BOBCHUNKS=test/chunks/bobchunks
+
+rm -rf $ALICECHUNKS
+rm -rf $BOBCHUNKS
+
+mkdir $ALICECHUNKS
+mkdir $BOBCHUNKS
+
 # startthem
 echo "STARTING ALICE ON $ALICEPORT"
-node node.js --port $ALICEPORT  --name alice  --masterport $MASTERPORT > test/testoutput/alice.log &
+node node.js --port $ALICEPORT  --name alice  --masterport $MASTERPORT --chunkdirectory $ALICECHUNKS > test/testoutput/alice.log &
 ALICEPID=$!
 
 echo "STARTING BOB ON $BOBPORT"
-node node.js --port $BOBPORT  --name bob  --masterport $MASTERPORT > test/testoutput/bob.log &
-ALICEPID=$!
+node node.js --port $BOBPORT  --name bob  --masterport $MASTERPORT --chunkdirectory $BOBCHUNKS > test/testoutput/bob.log &
+BOBPID=$!
 
 sleep 1;
 
@@ -45,6 +54,19 @@ echo "Getting gameofthrones, 0 from bob. SHOULD come from the master, because al
   echo $OUTPUT;
 
 echo "Great."
+
+echo "Killing Alice"
+kill $ALICEPID
+sleep 1
+
+echo "bringing alice back up, she should remember what she had in her cache"
+node node.js --port $ALICEPORT  --name alice  --masterport $MASTERPORT --chunkdirectory $ALICECHUNKS > test/testoutput/alice.log &
+ALICEPID=$!
+
+echo "Getting gameofthrones, 25 from alice. SHOULD come from ALICE, because SHE HAS IT IN CACHE"
+  OUTPUT=`zerorpc -j -pj $ALICE get \"gameofthrones\" 25 true null | tail -n1`;
+  echo $OUTPUT;
+
 
 echo "All done"
 

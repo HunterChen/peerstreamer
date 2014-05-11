@@ -17,13 +17,23 @@ BOBPORT=8002
 ALICE=tcp://0.0.0.0:$ALICEPORT
 BOB=tcp://0.0.0.0:$BOBPORT
 
+# clear alice bob and carlos cache directories
+ALICECHUNKS=test/chunks/alicechunks
+BOBCHUNKS=test/chunks/bobchunks
+
+rm -rf $ALICECHUNKS
+rm -rf $BOBCHUNKS
+
+mkdir $ALICECHUNKS
+mkdir $BOBCHUNKS
+
 # startthem
 echo "STARTING ALICE ON $ALICEPORT"
-node node.js --port $ALICEPORT  --name alice  --master $MASTER > test/testoutput/alice.log &
+node node.js --port $ALICEPORT  --name alice  --master $MASTER --chunkdirectory $ALICECHUNKS > test/testoutput/alice.log &
 ALICEPID=$!
 
 echo "STARTING BOB ON $BOBPORT"
-node node.js --port $BOBPORT    --name bob    --master $MASTER > test/testoutput/bob.log &
+node node.js --port $BOBPORT    --name bob    --master $MASTER --chunkdirectory $BOBCHUNKS > test/testoutput/bob.log &
 BOBPID=$!
 
 sleep 1;
@@ -39,4 +49,5 @@ echo "Getting gameofthrones, 0 from bob, who should get it from ALICE, but ALICE
   OUTPUT=`zerorpc -j -pj $BOB get \"gameofthrones\" 0 true null | tail -n1`;
   echo $OUTPUT
 
+echo "All Done";
 wait;

@@ -32,7 +32,7 @@ var Node = module.exports.Node = function (options) {
     this.master = new Server('tcp://0.0.0.0:' + options.masterport, 'master');
     this.backup = this.master; // so we d on't llose the reference to master.
     this.reporter = new Reporter(this, this.chunkStore, this.master, this);
-    this.registerWithMaster();
+    this.registerWithMaster(this.chunkStore.getAllChunks());
 
     this.streamManager = new StreamManager(this.chunkStore, this);
     this.streamManager.on('masterTimedout', this.handleMasterFailure.bind(this));
@@ -74,9 +74,9 @@ Node.prototype.start = function () {
   console.log('Node started on ' + this.port);
 };
 
-Node.prototype.registerWithMaster = function() {
+Node.prototype.registerWithMaster = function(chunks) {
   console.log('Sending register to master', this.master.address);
-  this.master.getClient().invoke('register', this.name, this.address, function (err, response) {
+  this.master.getClient().invoke('register', this.name, this.address, chunks, function (err, response) {
     // TODO anything?
   });
 };
@@ -191,8 +191,8 @@ Node.prototype.handleReport = function (report, reply) {
   reply(null, 'ok');
 };
 
-Node.prototype.handleRegister = function (peername, peeraddress, reply) {
-  console.log('Got register from', peername, peeraddress);
+Node.prototype.handleRegister = function (peername, peeraddress, peerchunks, reply) {
+  console.log('Got register from', peername, peeraddress, peerchunks);
   var s = new Server(peeraddress, peername)
     , added = this.childTracker.add(s)
     ;
@@ -200,18 +200,28 @@ Node.prototype.handleRegister = function (peername, peeraddress, reply) {
     this.ChunkDirectory.removeServer(peername);
     console.log('Child flapped');
   }
+  var i
+    , chunk
+    ;
+  for (i = 0; i<peerchunks.length; i++) {
+    chunk = peerchunks[i];
+    this.ChunkDirectory.insert(chunk.filename, chunk.chunk, peername);
+  }
+
   console.log('Added child? ', added);
+  
   reply(null, 'ok');
 };
 
 
-Node.prototype.handleQuery = function (filename, chunknumber, reply) {
-  var serverNames = this.ChunkDirectory.getServers(filename, chunknumber)
+Node.prototype.handleQuery = function (filename, chunk, reply) {
+  var serverNames = this.ChunkDirectory.getServers(filename, chunk)
     , servers = []
     ;
   serverNames.forEach(function(serverName) {
     servers.push(this.childTracker.getChild(serverName).asSerializableObject());
   }.bind(this));
+  console.log('Serving query for ', filename, chunk, servers);
   reply(null, servers);
 };
 

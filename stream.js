@@ -143,7 +143,8 @@ Stream.prototype.advanceCursorFromNullSource = function (callback) {
     // Convert the raw {name: 'name', address: 'address'} peer list into a list of Servers
     if (err) {
       this.emit('masterTimedout');
-      return setTimeout(this.advanceCursor(callback), RETRY_WAITTIME);
+      console.log('Stream ', this.id, ' error calling query on master', err);
+      return setTimeout(this.advanceCursor.bind(this, callback), RETRY_WAITTIME);
     }
     var possiblePeers = []
       , peerString = ':'

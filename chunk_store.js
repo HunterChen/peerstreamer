@@ -79,9 +79,27 @@ var ChunkStore = module.exports.ChunkStore = function (capacity, directory) {
 
   this._loadDatastructure(); // load from disk if we can.
 
-  setInterval(this.sync.bind(this), 500); // too fast.
+  setInterval(this.sync.bind(this), 1000); // too fast.
 };
 util.inherits(ChunkStore, events.EventEmitter);
+
+ChunkStore.prototype.getAllChunks = function () {
+  // sync returns all the chunks {filename, chunk} objects
+  var chunks = []
+    , fc
+    , entry
+    ;
+  for (fc in this.chunks) {
+    entry = this.chunks[fc];
+    if (this.chunks.hasOwnProperty(fc)) {
+      chunks.push({
+        filename: entry.filename
+      , chunk: entry.chunk
+      });
+    }
+  }
+  return chunks;
+};
 
 ChunkStore.prototype._getKey = function (filename, chunk) {
   return filename + ':' + chunk;
@@ -498,14 +516,14 @@ ChunkStore.prototype._loadDatastructure = function () {
         // great.
         console.log('Loading ', chunkPath, ' from disk');
         chunkObj = manifest[chunkName];
-        entry = new StoreEntry(chunkObj.filename, chunkObj.chunk, null)
+        entry = new StoreEntry(chunkObj.filename, chunkObj.chunk, null);
         entry.lastUsed = chunkObj.lastUsed;
 
         entry.persisted = true;
         entry.deleted = false;
         entry.chunkPath = chunkPath;
         entry.location = LOCATION_DISK;
-        entries.push(entry)
+        entries.push(entry);
       }
     }
   }
@@ -519,7 +537,7 @@ ChunkStore.prototype._loadDatastructure = function () {
       return 1;
     }
     return 0;
-  })
+  });
 
   // Mru is first, add them all (with lru nodes)
   var i
@@ -530,7 +548,7 @@ ChunkStore.prototype._loadDatastructure = function () {
   for (i = 0; i<entries.length; i++) {
     entry = entries[i];
     fc = this._getKey(entry.filename, entry.chunk);
-    node = new LinkedListNode(null, null, fc)
+    node = new LinkedListNode(null, null, fc);
     entry.llNode = node;
     this.chunks[fc] = entry;
 

@@ -62,6 +62,7 @@ Stream.prototype._getChunkFromSource = function (source, filename, chunk, isMast
     ;
 
   client.invoke('get', filename, chunk, isMaster, streamId, function (err, res) {
+    client.close();
     if (!callbackCalled) {
       callbackCalled = true;
       if (err) {
@@ -156,9 +157,11 @@ Stream.prototype.advanceCursorFromSource = function (callback) {
 
 Stream.prototype.advanceCursorFromNullSource = function (callback) {
   // Then I need to find one.
-  this.thisNode.master.getClient({
+  var client = this.thisNode.master.getClient({
     timeout : QUERYTIMEOUT
-  }).invoke('query', this.filename, this.chunkCursor, function (err, serializedPossiblePeers) {
+  });
+  client.invoke('query', this.filename, this.chunkCursor, function (err, serializedPossiblePeers) {
+    client.close();
     // Convert the raw {name: 'name', address: 'address'} peer list into a list of Servers
     if (err) {
       this.emit('masterTimedout');

@@ -24,8 +24,9 @@ Reporter.prototype.sendReport = function (action, info) {
     , action: action
     , from: this.fromWhom.name
     };
-    this.recipient.getClient().invoke('report', report, function (err, response) {
-      // TODO what do I do?
+    var client = this.recipient.getClient();
+    client.invoke('report', report, function (err, response) {
+      client.close();
     });
   }
 };

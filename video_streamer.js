@@ -9,7 +9,7 @@ var childProcess = require('child_process')
 // Open up a child processs (vlc) and start streaming to its stdout
 
 var VideoStreamer = function (getInterval, source, filename) {
-  this.getInterval = getInterval;
+  this.getInterval = parseInt(getInterval, 10);
   this.source = source;
   this.filename = filename;
 
@@ -54,7 +54,7 @@ VideoStreamer.prototype._writeOne = function () {
       this.vlc.stdin.write(new Buffer(data.data, 'base64'));
       this.streamId = data.streamId;
       this.chunk++;
-      setTimeout(this._writeOne.bind(this), 10);
+      setTimeout(this._writeOne.bind(this), this.getInterval);
     }
   }.bind(this));
 };

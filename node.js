@@ -77,8 +77,9 @@ Node.prototype.start = function () {
 
 Node.prototype.registerWithMaster = function(chunks) {
   console.log('Sending register to master', this.master.address);
-  this.master.getClient().invoke('register', this.name, this.address, chunks, function (err, response) {
-    // TODO anything?
+  var client = this.master.getClient();
+  client.invoke('register', this.name, this.address, chunks, function (err, response) {
+    client.close();
   });
 };
 
@@ -95,7 +96,9 @@ Node.prototype.attemptContactMaster = function() {
   if (this.isOnSuper) {
     console.log('attempting to re-register', this.master.address);
     var chunks = this.chunkStore.getAllChunks();
-    this.backup.getClient().invoke('register', this.name, this.address, chunks,  function (err, response) {
+    var client = this.backup.getClient();
+    client.invoke('register', this.name, this.address, chunks,  function (err, response) {
+      client.close();
       if (err) {
         this.master = this.superMaster;
         this.isOnSuper = true;

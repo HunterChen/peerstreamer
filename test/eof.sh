@@ -16,6 +16,10 @@ ALICE=tcp://0.0.0.0:$ALICEPORT
 
 ALICECHUNKS=test/chunks/alicechunks
 
+rm -rf $ALICECHUNKS
+
+mkdir $ALICECHUNKS
+
 
 # startthem
 echo "STARTING ALICE ON $ALICEPORT"
@@ -25,19 +29,37 @@ ALICEPID=$!
 sleep 1;
 
 # HOKAY.
+
 echo "Getting gameofthrones, 1000 from alice"
-  OUTPUT=`zerorpc -j -pj $ALICE get \"gameofthrones\" 1000 true null | tail -n1`;
+  OUTPUT=`zerorpc -j -pj $ALICE get \"gameofthrones\" 995 true null | tail -n1`;
   SID1=`echo $OUTPUT | jq -r .streamId`;
   echo $OUTPUT;
   echo $SID1;
 
 sleep 1;
 
-echo "Geting gameofthrones 981..1020 from alice"
-for i in {981..1000}
+
+echo "Geting gameofthrones 996 to 1000 from alice"
+for i in {996..1005}
 do
   echo `zerorpc -j -pj $ALICE get \"gameofthrones\" $i true \"$SID1\" | tail -n1`;
 done
+
+echo "Getting gameofthrones, 1000 from alice"
+  OUTPUT=`zerorpc -j -pj $ALICE get \"gameofthrones\" 995 true null | tail -n1`;
+  SID1=`echo $OUTPUT | jq -r .streamId`;
+  echo $OUTPUT;
+  echo $SID1;
+
+sleep 1;
+
+echo "Geting gameofthrones 996 to 1000 from alice"
+for i in {1005..996}
+do
+  echo `zerorpc -j -pj $ALICE get \"gameofthrones\" $i true \"$SID1\" | tail -n1 | paste - <(echo $i)` &
+done
+
+
 
 
 echo 'ALL DONE'

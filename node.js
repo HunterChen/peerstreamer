@@ -110,6 +110,7 @@ Node.prototype._setupRpcServer = function () {
   , query: this.handleQuery.bind(this)
   , ping:  function (r) { r(); }
   });
+  this._server.on('error', console.log.bind(console));
 };
 
 Node.prototype.handleGet = function (filename, chunk, fromChild, streamId, reply) {
@@ -136,13 +137,28 @@ Node.prototype.handleGet = function (filename, chunk, fromChild, streamId, reply
 
     // TODO what if stream is null
     var stream = this.streamManager.get(filename, chunk, streamId);
+    //if (stream.isDone) {
+    //  reply(null, {data:false, streamId:null});
+    //}
+
     if (chunk < stream.position) {
       return reply('Chunk requested for file', filename, ':', chunk, 'is less than stream', streamId, 'position', stream.position);
     }
+
+    if (stream.isDone && chunk > stream.lastChunk) {
+      return reply(null, {data:false, streamId:stream.id});
+    }
+
     var registered = stream.registerPositionCallback(chunk, function () {
-      var data = this.chunkStore.get(filename, chunk);
+      console.log('REGISTERED CALLBCK');
+      if (stream.isDone && chunk >= stream.lastChunk) {
+        var data = false;
+      } else {
+        var data = this.chunkStore.get(filename, chunk);
+      }
       stream.advancePosition();
       reply(null, {data:data, streamId: stream.id});
+      
     }.bind(this));
     if (!registered) {
       // Then the callback to registerPositionCallback will NOT

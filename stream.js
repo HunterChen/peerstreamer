@@ -37,6 +37,7 @@ var Stream = module.exports.Stream = function (filename, initialChunk, chunkStor
 
   this.lastAccess = (new Date()).valueOf();
   this.isDone = false;
+  this.lastChunk = this.chunkCursor;
 
   this.on('positionAdvanced', this.checkWaitingCallbacks.bind(this));
   this.on('chunkCursorAdvanced', this.checkWaitingCallbacks.bind(this));
@@ -72,6 +73,11 @@ Stream.prototype._getChunkFromSource = function (source, filename, chunk, isMast
 
 
 Stream.prototype.advanceCursor = function (callback) {
+  if (this.isDone) {
+    console.log("Advncing chunk at EOF");
+    this.advanceChunkCursor();
+    return callback(null, true);
+  }
   // Get next chunk, from some server.
   /// Will callback with (err Err, advanced bool)
   if (this.chunkStore.has(this.filename, this.chunkCursor)) {
@@ -120,6 +126,9 @@ Stream.prototype.advanceCursorFromSource = function (callback) {
     if (response.data === false) {
       console.log('Stream', this.id, 'has reached EOF');
       this.isDone = true;
+      console.log("SETTING last", this.chunkCursor);
+      this.lastChunk = this.chunkCursor;
+      this.advanceChunkCursor();
       return callback(null, true);
     }
 
@@ -214,7 +223,7 @@ Stream.prototype.advanceCursorFromPossiblePeers = function (possiblePeers, callb
 
 Stream.prototype.fillBuffer = function () {
   // Moves the buffer forward, if nothing else is.
-  if (this._fillingBuffer || this.isDone) {
+  if (this._fillingBuffer) {
     // Someone else in on the JOB.
     // Stop being a whiteknight.
     return false;
@@ -223,7 +232,6 @@ Stream.prototype.fillBuffer = function () {
   }
 
   var step = function () {
-    console.log("STEPPING")
     if ((this.chunkCursor - this.position) > BUFFER_SIZE_IN_CHUNKS) {
       // Great. We're done here.
       this._fillingBuffer = false; 
@@ -231,10 +239,6 @@ Stream.prototype.fillBuffer = function () {
       this.advanceCursor(function (err, advanced) {
         if (err) {
           throw new Error(err); // BLOW UP. TODO: DONT BLOW UP.
-        }
-
-        if (this.isDone) {
-
         } else if (advanced) {
           // Recurse.
           console.log('Advanced cursor position to', this.chunkCursor);
@@ -256,6 +260,8 @@ Stream.prototype.registerPositionCallback = function (chunk, callback) {
   //
   // returns true  if successfully stored
   // returns false if not, probably because something else is
+  console.log("registered", chunk);
+
   if (this._positionCallbacks.hasOwnProperty(chunk)) {
     return false;
   } else {
@@ -271,7 +277,8 @@ Stream.prototype.checkWaitingCallbacks = function () {
   //
   // - get callback, if any, at position.
   // - check if k > our position.
-
+  console.log("position", this.position);
+  console.log("position cursor", this.chunkCursor);
   if (this._positionCallbacks.hasOwnProperty(this.position)) {
     if (this.chunkCursor > this.position) {
       // Great. Get it and delete it.
@@ -288,7 +295,9 @@ Stream.prototype.checkWaitingCallbacks = function () {
 };
 
 Stream.prototype.advancePosition = function () {
-  this.chunkStore.free(this.filename, this.position);
+  if ( this.position < this.lastChunk) {
+    this.chunkStore.free(this.filename, this.position);
+  } 
   this.position++;
   this.fillBuffer();
   this.emit('positionAdvanced');
@@ -296,5 +305,6 @@ Stream.prototype.advancePosition = function () {
 
 Stream.prototype.advanceChunkCursor = function () {
   this.chunkCursor++;
+  console.log("advanced position cursor", this.chunkCursor);
   this.emit('chunkCursorAdvanced');
 };

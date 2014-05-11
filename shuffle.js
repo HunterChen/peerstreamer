@@ -1,5 +1,7 @@
 'use strict';
 
+// http://stackoverflow.com/questions/2450954/how-to-randomize-shuffle-a-javascript-array
+
 module.exports = function (array) {
   var currentIndex = array.length
     , temporaryValue

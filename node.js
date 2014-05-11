@@ -9,6 +9,7 @@ var zerorpc = require('zerorpc')
   , Stream = require('./stream').Stream
   , StreamManager = require('./stream_manager').StreamManager
   , VideoDatabase = require('./video_database').VideoDatabase
+  , shuffle = require('./shuffle')
   ;
 
 var RETRY_MASTER_INTERVAL = 100
@@ -151,10 +152,11 @@ Node.prototype.handleGet = function (filename, chunk, fromChild, streamId, reply
 
     var registered = stream.registerPositionCallback(chunk, function () {
       console.log('REGISTERED CALLBCK');
+      var data;
       if (stream.isDone && chunk >= stream.lastChunk) {
-        var data = false;
+        data = false;
       } else {
-        var data = this.chunkStore.get(filename, chunk);
+        data = this.chunkStore.get(filename, chunk);
       }
       stream.advancePosition();
       reply(null, {data:data, streamId: stream.id});
@@ -221,6 +223,7 @@ Node.prototype.handleQuery = function (filename, chunk, reply) {
   serverNames.forEach(function(serverName) {
     servers.push(this.childTracker.getChild(serverName).asSerializableObject());
   }.bind(this));
+  shuffle(servers);
   console.log('Serving query for ', filename, chunk, servers);
   reply(null, servers);
 };

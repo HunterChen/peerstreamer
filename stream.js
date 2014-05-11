@@ -10,6 +10,7 @@ var BUFFER_SIZE_IN_CHUNKS = 10 // buffer size in chunks. good comment bro.
   , GETTIMEOUT = 3 // seconds we wait to connect a client
   , QUERYTIMEOUT = 1
   , RETRY_WAITTIME = 100
+  , REQUERY_PERIOD = 10 // after how many chunks should we re-query?
   ;
 
 var Stream = module.exports.Stream = function (filename, initialChunk, chunkStore, thisNode) {
@@ -26,6 +27,7 @@ var Stream = module.exports.Stream = function (filename, initialChunk, chunkStor
   this.chunkSource = null;
   this._chunkSourceIsMaster = false;
   this._chunkSourceStreamId = null;
+  this._chunksFromSameSource = 0;
 
   this.chunkStore = chunkStore;
 
@@ -49,6 +51,7 @@ Stream.prototype.setSource = function (server) {
   this.chunkSource = server;
   this._chunkSourceIsMaster = false;
   this._chunkSourceStreamId = null;
+  this._chunksFromSameSource = 0;
 };
 
 Stream.prototype._getChunkFromSource = function (source, filename, chunk, isMaster, streamId, callback) {
@@ -74,7 +77,7 @@ Stream.prototype._getChunkFromSource = function (source, filename, chunk, isMast
 
 Stream.prototype.advanceCursor = function (callback) {
   if (this.isDone) {
-    console.log("Advncing chunk at EOF");
+    console.log('Advncing chunk at EOF');
     this.advanceChunkCursor();
     return callback(null, true);
   }
@@ -91,6 +94,12 @@ Stream.prototype.advanceCursor = function (callback) {
       callback(null, true);
     });
   }
+
+  if (this._chunksFromSameSource >= REQUERY_PERIOD) {
+    // Just set chunk cursor to null;
+    this.setSource(null);
+  }
+
 
   if (this.chunkSource === null) {
     this.advanceCursorFromNullSource(callback);
@@ -126,7 +135,7 @@ Stream.prototype.advanceCursorFromSource = function (callback) {
     if (response.data === false) {
       console.log('Stream', this.id, 'has reached EOF');
       this.isDone = true;
-      console.log("SETTING last", this.chunkCursor);
+      console.log('SETTING last', this.chunkCursor);
       this.lastChunk = this.chunkCursor;
       this.advanceChunkCursor();
       return callback(null, true);
@@ -140,6 +149,7 @@ Stream.prototype.advanceCursorFromSource = function (callback) {
     this.chunkStore.add(this.filename, this.chunkCursor, response.data);
     this.advanceChunkCursor();
     this._chunkSourceStreamId = response.streamId;
+    this._chunksFromSameSource++;
     return callback(null, true);
   }.bind(this));
 };
@@ -261,7 +271,7 @@ Stream.prototype.registerPositionCallback = function (chunk, callback) {
   //
   // returns true  if successfully stored
   // returns false if not, probably because something else is
-  console.log("registered", chunk);
+  console.log('registered', chunk);
 
   if (this._positionCallbacks.hasOwnProperty(chunk)) {
     return false;
@@ -278,8 +288,8 @@ Stream.prototype.checkWaitingCallbacks = function () {
   //
   // - get callback, if any, at position.
   // - check if k > our position.
-  console.log("position", this.position);
-  console.log("position cursor", this.chunkCursor);
+  console.log('position', this.position);
+  console.log('position cursor', this.chunkCursor);
   if (this._positionCallbacks.hasOwnProperty(this.position)) {
     if (this.chunkCursor > this.position) {
       // Great. Get it and delete it.
@@ -296,9 +306,9 @@ Stream.prototype.checkWaitingCallbacks = function () {
 };
 
 Stream.prototype.advancePosition = function () {
-  if ( this.position < this.lastChunk) {
+  if (this.chunkStore.has(this.filename, this.position)) {
     this.chunkStore.free(this.filename, this.position);
-  } 
+  }
   this.position++;
   this.fillBuffer();
   this.emit('positionAdvanced');
@@ -306,6 +316,6 @@ Stream.prototype.advancePosition = function () {
 
 Stream.prototype.advanceChunkCursor = function () {
   this.chunkCursor++;
-  console.log("advanced position cursor", this.chunkCursor);
+  console.log('advanced position cursor', this.chunkCursor);
   this.emit('chunkCursorAdvanced');
 };

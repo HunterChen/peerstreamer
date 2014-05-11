@@ -4,13 +4,11 @@ trap "kill 0" SIGINT SIGTERM EXIT
 
 # start a master on 8000
 MASTERPORT=8000
-MASTER=tcp://0.0.0.0:$MASTERPORT
 echo "STARTING MASTER ON $MASTERPORT"
 node node.js --name master --port $MASTERPORT > test/testoutput/master.log &
 MASTERPID=$!
 
 SUPERMASTERPORT=8003
-SUPERMASTER=tcp://0.0.0.0:$SUPERMASTERPORT
 node node.js --name supermaster --port $SUPERMASTERPORT > test/testoutput/supermaster.log &
 SUPERMASTERPID=$!
 
@@ -20,14 +18,10 @@ sleep 1;
 ALICEPORT=8001
 ALICE=tcp://0.0.0.0:$ALICEPORT
 
-ALICECHUNKS=test/chunks/alicechunks
-
-rm -rf $ALICECHUNKS
-mkdir $ALICECHUNKS
 
 # startthem
 echo "STARTING ALICE ON $ALICEPORT"
-node node.js --port $ALICEPORT  --name alice  --supermaster $SUPERMASTER --master $MASTER --chunkdirectory $ALICECHUNKS > test/testoutput/alice.log &
+node node.js --port $ALICEPORT  --name alice  --supermasterport $SUPERMASTERPORT --masterport $MASTERPORT > test/testoutput/alice.log &
 ALICEPID=$!
 sleep 1;
 

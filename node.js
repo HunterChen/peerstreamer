@@ -83,7 +83,9 @@ Node.prototype.registerWithMaster = function(chunks) {
 };
 
 Node.prototype.handleMasterFailure = function() {
+  console.log('change to supermaster');
   if (this.hasSuperMaster) {
+    console.log('change to supermaste success');
     this.master = this.superMaster;
     this.isOnSuper = true;
   }
@@ -91,13 +93,15 @@ Node.prototype.handleMasterFailure = function() {
 
 Node.prototype.attemptContactMaster = function() {
   if (this.isOnSuper) {
-    this.master = this.backup;
-    this.isOnSuper = false;
     console.log('attempting to re-register', this.master.address);
-    this.master.getClient().invoke('register', this.name, this.address, function (err, response) {
+    var chunks = this.chunkStore.getAllChunks();
+    this.backup.getClient().invoke('register', this.name, this.address, chunks,  function (err, response) {
       if (err) {
         this.master = this.superMaster;
         this.isOnSuper = true;
+      } else {
+        this.master = this.backup;
+        this.isOnSuper = false;
       }
     }.bind(this));    
   }

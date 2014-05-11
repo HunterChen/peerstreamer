@@ -44,7 +44,7 @@ echo "Getting gameofthrones, 0 from alice"
 sleep 1;
 kill $MASTERPID
 
-echo "Geting gameofthrones 15..20 from alice"
+echo "Geting gameofthrones 1..20 from alice"
 for i in {1..20}
 do
   echo `zerorpc -j -pj $ALICE get \"gameofthrones\" $i true \"$SID1\" | tail -n1`;

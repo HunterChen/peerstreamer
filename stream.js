@@ -28,13 +28,15 @@ var Stream = module.exports.Stream = function (filename, initialChunk, chunkStor
   this._chunkSourceStreamId = null;
 
   this.chunkStore = chunkStore;
-  this.done = false;
 
   this._positionCallbacks = {};
 
   // State to mutex advanceCursor* and friends.
   this._fillingBuffer = false;
   this.id = uuid.v4();
+
+  this.lastAccess = (new Date()).valueOf();
+  this.isDone = false;
 
   this.on('positionAdvanced', this.checkWaitingCallbacks.bind(this));
   this.on('chunkCursorAdvanced', this.checkWaitingCallbacks.bind(this));
@@ -115,6 +117,12 @@ Stream.prototype.advanceCursorFromSource = function (callback) {
       return callback(err, false);
     }
     
+    if (response.data === false) {
+      console.log('Stream', this.id, 'has reached EOF');
+      this.isDone = true;
+      return callback(null, true);
+    }
+
     if (response.data === null) {
       console.log('Stream', this.id, 'failed to advance chunk from', this.chunkSource.name);
       return callback(null, false);
@@ -133,7 +141,6 @@ Stream.prototype.advanceCursorFromNullSource = function (callback) {
     timeout : QUERYTIMEOUT
   }).invoke('query', this.filename, this.chunkCursor, function (err, serializedPossiblePeers) {
     // Convert the raw {name: 'name', address: 'address'} peer list into a list of Servers
-
     if (err) {
       this.emit('masterTimedout');
       return setTimeout(this.advanceCursor(callback), RETRY_WAITTIME);
@@ -168,7 +175,7 @@ Stream.prototype.advanceCursorFromNullSource = function (callback) {
         this.advanceCursorFromSource(function(err, advanced){
           if (err) {
             this.emit('masterTimedout');
-            return setTimeout(this.advanceCursor(callback), RETRY_WAITTIME);
+            return setTimeout(this.advanceCursor.bind(this, callback), RETRY_WAITTIME);
           } else { // assume always advance?
             callback(err, advanced);
           }
@@ -207,7 +214,7 @@ Stream.prototype.advanceCursorFromPossiblePeers = function (possiblePeers, callb
 
 Stream.prototype.fillBuffer = function () {
   // Moves the buffer forward, if nothing else is.
-  if (this._fillingBuffer) {
+  if (this._fillingBuffer || this.isDone) {
     // Someone else in on the JOB.
     // Stop being a whiteknight.
     return false;
@@ -216,6 +223,7 @@ Stream.prototype.fillBuffer = function () {
   }
 
   var step = function () {
+    console.log("STEPPING")
     if ((this.chunkCursor - this.position) > BUFFER_SIZE_IN_CHUNKS) {
       // Great. We're done here.
       this._fillingBuffer = false; 
@@ -224,7 +232,10 @@ Stream.prototype.fillBuffer = function () {
         if (err) {
           throw new Error(err); // BLOW UP. TODO: DONT BLOW UP.
         }
-        if (advanced) {
+
+        if (this.isDone) {
+
+        } else if (advanced) {
           // Recurse.
           console.log('Advanced cursor position to', this.chunkCursor);
           step();

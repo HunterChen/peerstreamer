@@ -113,6 +113,8 @@ Node.prototype._setupRpcServer = function () {
 };
 
 Node.prototype.handleGet = function (filename, chunk, fromChild, streamId, reply) {
+
+
   if (!this.hasMaster) {
     console.log('Serving get for', filename, chunk);
     if (this.videoDatabase) {
@@ -121,6 +123,9 @@ Node.prototype.handleGet = function (filename, chunk, fromChild, streamId, reply
       });
     } else {
       var data = filename + ':' + chunk;
+      if (chunk >= 1000) {
+        return reply(null, {data:false, streamId:null});
+      }
       return reply(null, {data:data, streamId: null});
     }
   }

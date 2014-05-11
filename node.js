@@ -19,7 +19,8 @@ var RETRY_MASTER_INTERVAL = 100
 var Node = module.exports.Node = function (options) {
   this.port = options.port;
   this.name = options.name;
-  this.address = 'tcp://0.0.0.0:' + this.port;
+  this.address = 'tcp://' + options.ip + ':' + this.port;
+  
 
   this._setupRpcServer();
 
@@ -238,7 +239,7 @@ Node.prototype.handleQuery = function (filename, chunk, reply) {
 
 if (require.main === module) {
   var argv = require('optimist')
-    .demand(['port', 'name'])
+    .demand(['port', 'name', 'ip'])
     .describe('master', 'optionally specify master')
     .describe('supermaster', 'optionally specify your masters master')
     .describe('videodatabase', 'specificy directory to use as video database for masterless nodes')
@@ -251,6 +252,7 @@ if (require.main === module) {
     , supermaster: argv.supermaster
     , videodatabase: argv.videodatabase
     , chunkdirectory: argv.chunkdirectory
+    , ip: argv.ip
     })
     ;
 
